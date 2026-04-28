@@ -18,13 +18,6 @@ let DEFAULT_SECTORS;
 
 function loadProviderModule() {
   jest.resetModules();
-  mockQueryMemories = jest.fn(() => Promise.resolve([]));
-
-  jest.doMock('../../pro/memory/memory-loader', () => ({
-    MemoryLoader: jest.fn().mockImplementation(() => ({
-      queryMemories: mockQueryMemories,
-    })),
-  }), { virtual: true });
 
   let loadedModule;
   jest.isolateModules(() => {
@@ -42,6 +35,7 @@ describe('SynapseMemoryProvider', () => {
   let provider;
 
   beforeEach(() => {
+    mockQueryMemories = jest.fn(() => Promise.resolve([]));
     ({
       SynapseMemoryProvider,
       AGENT_SECTOR_PREFERENCES,
@@ -49,6 +43,9 @@ describe('SynapseMemoryProvider', () => {
       DEFAULT_SECTORS,
     } = loadProviderModule());
     provider = new SynapseMemoryProvider();
+    provider._getLoader = () => ({
+      queryMemories: mockQueryMemories,
+    });
   });
 
   // -------------------------------------------------------------------------
