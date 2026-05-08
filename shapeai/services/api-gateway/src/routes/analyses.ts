@@ -20,30 +20,27 @@ export async function analysesRoutes(app: FastifyInstance) {
       throw err
     }
 
-    let analysisId: string
-    try {
-      const { rows } = await pool.query<{ id: string }>(
-        `INSERT INTO analyses (user_id, status)
-         VALUES ($1, 'processing')
-         RETURNING id`,
-        [userId]
-      )
-      analysisId = rows[0].id
-    } catch (e) {
+    // INSERT analysis
+    const insertResult = await pool.query<{ id: string }>(
+      `INSERT INTO analyses (user_id, status)
+       VALUES ($1, 'processing')
+       RETURNING id`,
+      [userId]
+    ).catch((e: Error) => {
       request.log.error({ err: e }, '[POST /analyses] DB insert failed')
       throw e
-    }
+    })
 
-    let frontResult: { url: string; key: string }, backResult: { url: string; key: string }
-    try {
-      ;[frontResult, backResult] = await Promise.all([
-        generatePresignedUploadUrl(userId, analysisId, 'front'),
-        generatePresignedUploadUrl(userId, analysisId, 'back'),
-      ])
-    } catch (e) {
+    const analysisId = insertResult.rows[0].id
+
+    // Gera presigned upload URLs
+    const [frontResult, backResult] = await Promise.all([
+      generatePresignedUploadUrl(userId, analysisId, 'front'),
+      generatePresignedUploadUrl(userId, analysisId, 'back'),
+    ]).catch((e: Error) => {
       request.log.error({ err: e }, '[POST /analyses] S3 presign failed')
       throw e
-    }
+    })
 
     // Salva as chaves S3 para referência do ai-engine
     await pool.query(
