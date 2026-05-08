@@ -30,6 +30,14 @@ async function bootstrap() {
     timestamp: new Date().toISOString(),
   }))
 
+  app.setErrorHandler((error: Error & { statusCode?: number }, request, reply) => {
+    console.error('=== ROUTE ERROR ===', error.message, '\n', error.stack)
+    reply.status(error.statusCode ?? 500).send({
+      error: error.message || 'Internal Server Error',
+      stack: error.stack?.split('\n').slice(0, 3).join(' | '),
+    })
+  })
+
   app.get('/debug/env', async () => ({
     DATABASE_URL: !!process.env.DATABASE_URL,
     AWS_ACCESS_KEY_ID: !!process.env.AWS_ACCESS_KEY_ID,
