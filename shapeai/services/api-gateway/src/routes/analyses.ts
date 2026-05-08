@@ -20,26 +20,37 @@ export async function analysesRoutes(app: FastifyInstance) {
       throw err
     }
 
-    const { rows } = await pool.query<{ id: string }>(
-      `INSERT INTO analyses (user_id, status)
-       VALUES ($1, 'processing')
-       RETURNING id`,
-      [userId]
-    )
+    let analysisId: string
+    try {
+      const { rows } = await pool.query<{ id: string }>(
+        `INSERT INTO analyses (user_id, status)
+         VALUES ($1, 'processing')
+         RETURNING id`,
+        [userId]
+      )
+      analysisId = rows[0].id
+    } catch (e) {
+      request.log.error({ err: e }, '[POST /analyses] DB insert failed')
+      throw e
+    }
 
-    const analysisId = rows[0].id
+    let frontResult: { url: string; key: string }, backResult: { url: string; key: string }
+    try {
+      ;[frontResult, backResult] = await Promise.all([
+        generatePresignedUploadUrl(userId, analysisId, 'front'),
+        generatePresignedUploadUrl(userId, analysisId, 'back'),
+      ])
+    } catch (e) {
+      request.log.error({ err: e }, '[POST /analyses] S3 presign failed')
+      throw e
+    }
 
-    const [frontResult, backResult] = await Promise.all([
-      generatePresignedUploadUrl(userId, analysisId, 'front'),
-      generatePresignedUploadUrl(userId, analysisId, 'back'),
-    ])
-
-    // Salva as URLs para referência do ai-engine
+    // Salva as chaves S3 para referência do ai-engine
     await pool.query(
       `UPDATE analyses
        SET photo_front_url = $1, photo_back_url = $2
        WHERE id = $3`,
-      [frontResult.url, backResult.url, analysisId]
+      [frontResult.key, backResult.key, analysisId]
     )
 
     return reply.status(201).send({

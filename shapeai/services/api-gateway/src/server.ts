@@ -30,6 +30,17 @@ async function bootstrap() {
     timestamp: new Date().toISOString(),
   }))
 
+  app.get('/debug/env', async () => ({
+    DATABASE_URL: !!process.env.DATABASE_URL,
+    AWS_ACCESS_KEY_ID: !!process.env.AWS_ACCESS_KEY_ID,
+    AWS_SECRET_ACCESS_KEY: !!process.env.AWS_SECRET_ACCESS_KEY,
+    AWS_S3_BUCKET: process.env.AWS_S3_BUCKET ?? 'NOT SET',
+    AWS_REGION: process.env.AWS_REGION ?? 'NOT SET',
+    SUPABASE_URL: !!process.env.SUPABASE_URL,
+    AI_ENGINE_URL: process.env.AI_ENGINE_URL ?? 'NOT SET',
+    INTERNAL_SECRET: !!process.env.INTERNAL_SECRET,
+  }))
+
   await app.register(profileRoutes)
   await app.register(analysesRoutes)
   await app.register(chatRoutes)
