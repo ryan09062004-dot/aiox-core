@@ -108,7 +108,7 @@ export default function HistoryScreen() {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.title}>Histórico</Text>
+        <Text style={styles.title}>Avaliações</Text>
         {isSelectMode ? (
           <View style={styles.headerActions}>
             <TouchableOpacity

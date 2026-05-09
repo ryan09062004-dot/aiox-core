@@ -130,7 +130,7 @@ export default function OnboardingScreen() {
       {step === 2 && (
         <View style={styles.step}>
           <Text style={styles.title}>Suas medidas</Text>
-          <Text style={styles.subtitle}>Ajuda a tornar o relatório mais preciso</Text>
+          <Text style={styles.subtitle}>Ajuda a tornar sua avaliação mais precisa</Text>
           <Text style={styles.label}>Altura (cm)</Text>
           <TextInput
             style={styles.input}

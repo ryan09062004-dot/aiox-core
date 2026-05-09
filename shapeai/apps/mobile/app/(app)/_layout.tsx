@@ -38,7 +38,7 @@ export default function AppLayout() {
       />
       <Tabs.Screen
         name="history"
-        options={{ title: 'Histórico', tabBarIcon: tabIcon('bar-chart', 'bar-chart-outline') }}
+        options={{ title: 'Avaliações', tabBarIcon: tabIcon('bar-chart', 'bar-chart-outline') }}
       />
       <Tabs.Screen
         name="coach"

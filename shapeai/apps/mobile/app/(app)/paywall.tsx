@@ -12,14 +12,14 @@ import { useSubscription } from '../../src/hooks/useSubscription'
 
 const FREE_LIMITATIONS = [
   '1 análise de shape',
-  'Histórico limitado',
+  'Avaliações limitadas',
   'Sem notificações de progresso',
   'Sem comparativo de evolução',
 ]
 
 const PRO_BENEFITS = [
   'Análises ilimitadas',
-  'Histórico completo',
+  'Avaliações ilimitadas',
   'Notificações de progresso',
   'Comparativo de evolução',
 ]

@@ -10,7 +10,7 @@ const STEPS = [
   'Detectando áreas a melhorar...',
   'Calculando seu score...',
   'Criando seu plano de treino...',
-  'Finalizando relatório...',
+  'Finalizando sua avaliação...',
 ]
 
 export default function AnalysisLoadingScreen() {

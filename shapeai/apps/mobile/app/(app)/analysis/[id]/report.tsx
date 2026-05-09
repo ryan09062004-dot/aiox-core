@@ -333,7 +333,7 @@ export default function ReportScreen() {
   if (error || !analysis) {
     return (
       <View style={s.center}>
-        <Text style={s.errorText}>{error ?? 'Relatório não encontrado.'}</Text>
+        <Text style={s.errorText}>{error ?? 'Avaliação não encontrada.'}</Text>
       </View>
     )
   }
@@ -355,7 +355,7 @@ export default function ReportScreen() {
           <Text style={s.backBtn}>← Voltar</Text>
         </TouchableOpacity>
         <TouchableOpacity onPress={() => router.push('/(app)/history')}>
-          <Text style={s.historyBtn}>Histórico</Text>
+          <Text style={s.historyBtn}>Avaliações</Text>
         </TouchableOpacity>
       </View>
 
