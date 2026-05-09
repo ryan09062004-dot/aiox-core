@@ -278,19 +278,21 @@ function MusclesTab({ muscle_scores }: { muscle_scores: MuscleScores }) {
 function FutureEvolutionCard({ imageUrl, isPro }: { imageUrl: string; isPro: boolean }) {
   return (
     <View style={fes.card}>
-      <Text style={fes.label}>SUA EVOLUÇÃO EM 90 DIAS</Text>
       <View style={fes.imageWrapper}>
         <Image
           source={{ uri: imageUrl }}
           style={fes.image}
           blurRadius={isPro ? 0 : 28}
-          resizeMode="cover"
+          resizeMode="contain"
         />
+        <View style={fes.labelOverlay}>
+          <Text style={fes.label}>SEU SHAPE DOS SONHOS</Text>
+        </View>
         {!isPro && (
           <View style={fes.lockOverlay}>
             <Text style={fes.lockIcon}>🔒</Text>
-            <Text style={fes.lockTitle}>Desbloqueie sua evolução</Text>
-            <Text style={fes.lockSub}>Veja como você pode estar em 90 dias de treino consistente</Text>
+            <Text style={fes.lockTitle}>Desbloqueie seu shape dos sonhos</Text>
+            <Text style={fes.lockSub}>Veja como seu corpo pode se transformar com treino e alimentação consistentes</Text>
             <TouchableOpacity style={fes.upgradeBtn} onPress={() => router.push('/(app)/paywall')}>
               <Text style={fes.upgradeBtnText}>Assinar Pro</Text>
             </TouchableOpacity>
@@ -299,7 +301,7 @@ function FutureEvolutionCard({ imageUrl, isPro }: { imageUrl: string; isPro: boo
       </View>
       {isPro && (
         <Text style={fes.disclaimer}>
-          Projeção gerada por IA. Resultados reais dependem de consistência, alimentação e genética individual.
+          Visualização gerada por IA. Resultados reais dependem de consistência, alimentação e genética individual.
         </Text>
       )}
     </View>
@@ -618,22 +620,29 @@ const fes = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#1E3A1E',
   },
-  label: {
-    color: '#4CAF50',
-    fontSize: 10,
-    fontWeight: '700',
-    letterSpacing: 1.5,
-    padding: 16,
-    paddingBottom: 10,
-  },
   imageWrapper: {
     width: '100%',
-    height: 320,
+    aspectRatio: 3 / 4,
     position: 'relative',
   },
   image: {
     width: '100%',
     height: '100%',
+  },
+  labelOverlay: {
+    position: 'absolute',
+    top: 12,
+    left: 12,
+    backgroundColor: 'rgba(0,0,0,0.55)',
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+  },
+  label: {
+    color: '#4CAF50',
+    fontSize: 10,
+    fontWeight: '700',
+    letterSpacing: 1.5,
   },
   lockOverlay: {
     position: 'absolute',

@@ -28,7 +28,8 @@
         "backgroundColor": "#0A0A0A"
       },
       "permissions": [
-        "android.permission.CAMERA"
+        "android.permission.CAMERA",
+        "android.permission.RECORD_AUDIO"
       ],
       "edgeToEdgeEnabled": true
     },
@@ -57,6 +58,13 @@
     ],
     "experiments": {
       "typedRoutes": true
-    }
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "d2a837be-0915-4116-86d7-b438cab06296"
+      }
+    },
+    "owner": "ryan13848"
   }
 }
