@@ -1,4 +1,5 @@
 import { useEffect } from 'react'
+import { Linking } from 'react-native'
 import { Stack } from 'expo-router'
 import { StatusBar } from 'expo-status-bar'
 import { router } from 'expo-router'
@@ -7,6 +8,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context'
 import { useAuthStore } from '../src/stores/auth.store'
 import { configurePurchases } from '../src/services/purchases.service'
 import { registerPushToken } from '../src/services/notification.service'
+import { supabase } from '../src/services/supabase.client'
 
 configurePurchases()
 
@@ -25,6 +27,20 @@ export default function RootLayout() {
   useEffect(() => {
     initialize()
   }, [initialize])
+
+  // Handler global de deep links OAuth — registrado antes de qualquer rota renderizar
+  useEffect(() => {
+    const handleUrl = async (url: string) => {
+      const match = url.match(/[?&]code=([^&#]+)/)
+      if (match) {
+        const code = decodeURIComponent(match[1])
+        await supabase.auth.exchangeCodeForSession(code).catch(() => {})
+      }
+    }
+    const sub = Linking.addEventListener('url', (e) => handleUrl(e.url))
+    Linking.getInitialURL().then((url) => { if (url) handleUrl(url) })
+    return () => sub.remove()
+  }, [])
 
   useEffect(() => {
     if (session) registerPushToken().catch(() => {})

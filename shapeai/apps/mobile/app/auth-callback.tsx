@@ -1,23 +1,32 @@
 import { useEffect } from 'react'
 import { View, ActivityIndicator } from 'react-native'
-import { useLocalSearchParams, router } from 'expo-router'
+import { router } from 'expo-router'
 import { supabase } from '../src/services/supabase.client'
 
-async function resolveAndRedirect(code?: string) {
-  if (code) {
-    await supabase.auth.exchangeCodeForSession(code).catch(() => {})
-  }
-  // Mesmo que o exchange falhe (código já usado por login.tsx no iOS), verifica a sessão
-  const { data } = await supabase.auth.getSession()
-  if (data.session) router.replace('/(app)')
-  else router.replace('/(auth)/login')
-}
-
 export default function AuthCallback() {
-  const params = useLocalSearchParams<{ code?: string }>()
-
   useEffect(() => {
-    resolveAndRedirect(params.code)
+    // O _layout.tsx já trocou o code pelo token via Linking global handler.
+    // Aqui só aguardamos a sessão ser estabelecida via onAuthStateChange.
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session) router.replace('/(app)')
+    })
+
+    // Verifica imediatamente caso já exista sessão (ex: iOS onde login.tsx trocou o código)
+    supabase.auth.getSession().then(({ data }) => {
+      if (data.session) router.replace('/(app)')
+    })
+
+    // Timeout de segurança: se em 10s nenhuma sessão, volta ao login
+    const timeout = setTimeout(() => {
+      supabase.auth.getSession().then(({ data }) => {
+        if (!data.session) router.replace('/(auth)/login')
+      })
+    }, 10000)
+
+    return () => {
+      subscription.unsubscribe()
+      clearTimeout(timeout)
+    }
   }, [])
 
   return (
