@@ -10,6 +10,7 @@ import { router } from 'expo-router'
 import { Ionicons } from '@expo/vector-icons'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import { useAuthStore } from '../../src/stores/auth.store'
+import { PHOTO_TIP_STORAGE_KEY } from './photo-tip'
 import { useSubscription } from '../../src/hooks/useSubscription'
 import { getUserProfile } from '../../src/services/profile.service'
 import { listAnalyses, getAnalysisResult } from '../../src/services/analysis.service'
@@ -61,7 +62,7 @@ function Ring({ pct, size = 56 }: { pct: number; size?: number }) {
 // ─── Screen ──────────────────────────────────────────────────────────────────
 
 export default function HomeScreen() {
-  const { session } = useAuthStore()
+  const { session, isGuest } = useAuthStore()
   const { subscription } = useSubscription()
   const isPro = subscription?.status === 'pro'
 
@@ -134,7 +135,7 @@ export default function HomeScreen() {
         setWeight(profileRes.value.weight_kg ?? null)
       } else {
         const msg = (profileRes.reason as Error).message ?? ''
-        if (msg.includes('404') || msg.includes('not found')) {
+        if ((msg.includes('404') || msg.includes('not found')) && !isGuest) {
           router.replace('/(app)/onboarding')
           return
         }
@@ -270,7 +271,10 @@ export default function HomeScreen() {
           </View>
           <Ionicons name="chevron-forward" size={18} color="#444" />
         </View>
-        <TouchableOpacity style={styles.evalBtn} onPress={() => router.push('/(app)/camera')}>
+        <TouchableOpacity style={styles.evalBtn} onPress={async () => {
+          const skip = await AsyncStorage.getItem(PHOTO_TIP_STORAGE_KEY)
+          router.push((skip === 'true' ? '/(app)/camera' : '/(app)/photo-tip') as never)
+        }}>
           <Ionicons name="scan" size={18} color="#fff" />
           <Text style={styles.evalBtnText}>Nova Avaliação</Text>
         </TouchableOpacity>

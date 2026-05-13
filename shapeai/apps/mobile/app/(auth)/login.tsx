@@ -13,7 +13,12 @@ export default function LoginScreen() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [oauthLoading, setOauthLoading] = useState(false)
-  const { signIn, isLoading } = useAuthStore()
+  const { signIn, isLoading, setGuestMode } = useAuthStore()
+
+  const handleGuestMode = () => {
+    setGuestMode(true)
+    router.replace('/(app)')
+  }
 
   const handleLogin = async () => {
     if (!email || !password) {
@@ -136,6 +141,10 @@ export default function LoginScreen() {
       >
         <Text style={styles.signUpText}>Não tem conta? <Text style={styles.signUpLink}>Criar conta</Text></Text>
       </TouchableOpacity>
+
+      <TouchableOpacity style={styles.guestContainer} onPress={handleGuestMode}>
+        <Text style={styles.guestText}>Explorar sem conta</Text>
+      </TouchableOpacity>
     </View>
   )
 }
@@ -173,4 +182,6 @@ const styles = StyleSheet.create({
   signUpContainer: { marginTop: 24, alignItems: 'center' },
   signUpText: { color: '#888', fontSize: 15 },
   signUpLink: { color: '#4CAF50', fontWeight: '600' },
+  guestContainer: { marginTop: 4, alignItems: 'center', padding: 12 },
+  guestText: { color: '#333', fontSize: 13 },
 })

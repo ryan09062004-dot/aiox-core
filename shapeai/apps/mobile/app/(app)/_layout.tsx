@@ -11,9 +11,9 @@ function tabIcon(active: IoniconsName, inactive: IoniconsName) {
 }
 
 export default function AppLayout() {
-  const { session } = useAuthStore()
+  const { session, isGuest } = useAuthStore()
 
-  if (!session) return <Redirect href="/(auth)/login" />
+  if (!session && !isGuest) return <Redirect href="/(auth)/login" />
 
   return (
     <Tabs
@@ -41,6 +41,10 @@ export default function AppLayout() {
         options={{ title: 'Avaliações', tabBarIcon: tabIcon('bar-chart', 'bar-chart-outline') }}
       />
       <Tabs.Screen
+        name="treino"
+        options={{ title: 'Treino', tabBarIcon: tabIcon('barbell', 'barbell-outline') }}
+      />
+      <Tabs.Screen
         name="coach"
         options={{ title: 'Coach', tabBarIcon: tabIcon('fitness', 'fitness-outline') }}
       />
@@ -49,6 +53,7 @@ export default function AppLayout() {
         options={{ title: 'Perfil', tabBarIcon: tabIcon('person', 'person-outline') }}
       />
       <Tabs.Screen name="camera"    options={{ href: null }} />
+      <Tabs.Screen name="photo-tip" options={{ href: null }} />
       <Tabs.Screen name="analysis"  options={{ href: null }} />
       <Tabs.Screen name="paywall"   options={{ href: null }} />
       <Tabs.Screen name="compare"   options={{ href: null }} />

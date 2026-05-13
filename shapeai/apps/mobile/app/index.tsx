@@ -3,7 +3,7 @@ import { useAuthStore } from '../src/stores/auth.store'
 import { View, ActivityIndicator } from 'react-native'
 
 export default function Index() {
-  const { session, isLoading } = useAuthStore()
+  const { session, isGuest, isLoading } = useAuthStore()
 
   if (isLoading) {
     return (
@@ -13,6 +13,6 @@ export default function Index() {
     )
   }
 
-  if (!session) return <Redirect href="/(auth)/login" />
+  if (!session && !isGuest) return <Redirect href="/(auth)/login" />
   return <Redirect href="/(app)" />
 }

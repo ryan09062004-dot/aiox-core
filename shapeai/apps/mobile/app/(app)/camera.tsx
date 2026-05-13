@@ -15,6 +15,7 @@ import { Ionicons } from '@expo/vector-icons'
 import { router, useFocusEffect } from 'expo-router'
 import { startAnalysis, uploadPhoto, triggerProcessing } from '../../src/services/analysis.service'
 import { HumanSilhouette } from '../../src/components/camera/HumanSilhouette'
+import { useAuthStore } from '../../src/stores/auth.store'
 
 type CaptureStep = 'front' | 'back'
 type ScreenState = 'camera' | 'preview'
@@ -35,6 +36,7 @@ const STEP_CONFIG: Record<CaptureStep, { label: string; number: number; instruct
 }
 
 export default function CameraScreen() {
+  const { isGuest } = useAuthStore()
   const [permission, requestPermission] = useCameraPermissions()
   const [step, setStep] = useState<CaptureStep>('front')
   const [screenState, setScreenState] = useState<ScreenState>('camera')
@@ -127,6 +129,19 @@ export default function CameraScreen() {
       setPreviewUri(null)
       setStep('back')
       setScreenState('camera')
+      return
+    }
+
+    // Gate para convidados — bloqueia o upload e promove cadastro
+    if (isGuest) {
+      Alert.alert(
+        'Crie sua conta gratuita',
+        'Para salvar sua análise e ver os resultados, você precisa de uma conta.',
+        [
+          { text: 'Agora não', style: 'cancel' },
+          { text: 'Criar conta', onPress: () => router.push('/(auth)/signup') },
+        ]
+      )
       return
     }
 

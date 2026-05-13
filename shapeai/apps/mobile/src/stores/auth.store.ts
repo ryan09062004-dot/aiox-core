@@ -6,15 +6,20 @@ import { purchasesLogIn, purchasesLogOut } from '../services/purchases.service'
 interface AuthState {
   session: Session | null
   isLoading: boolean
+  isGuest: boolean
   initialize: () => () => void
   signIn: (email: string, password: string) => Promise<string | null>
   signUp: (email: string, password: string) => Promise<string | null>
   signOut: () => Promise<void>
+  setGuestMode: (value: boolean) => void
 }
 
 export const useAuthStore = create<AuthState>((set) => ({
   session: null,
   isLoading: true,
+  isGuest: false,
+
+  setGuestMode: (value: boolean) => set({ isGuest: value }),
 
   initialize: () => {
     supabase.auth.getSession()
@@ -34,6 +39,7 @@ export const useAuthStore = create<AuthState>((set) => ({
       const { error, data } = await supabase.auth.signInWithPassword({ email, password })
       if (error) return mapAuthError(error.message)
       if (data.user) purchasesLogIn(data.user.id).catch(() => {})
+      set({ isGuest: false })
       return null
     } catch {
       return 'Erro de conexão. Verifique sua internet e tente novamente.'
@@ -48,6 +54,7 @@ export const useAuthStore = create<AuthState>((set) => ({
       const { error, data } = await supabase.auth.signUp({ email, password })
       if (error) return mapAuthError(error.message)
       if (data.user) purchasesLogIn(data.user.id).catch(() => {})
+      set({ isGuest: false })
       return null
     } catch {
       return 'Erro de conexão. Verifique sua internet e tente novamente.'
@@ -59,7 +66,7 @@ export const useAuthStore = create<AuthState>((set) => ({
   signOut: async () => {
     await purchasesLogOut().catch(() => {})
     await supabase.auth.signOut()
-    set({ session: null })
+    set({ session: null, isGuest: false })
   },
 }))
 
