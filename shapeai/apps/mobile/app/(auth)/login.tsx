@@ -59,12 +59,13 @@ const { data, error } = await supabase.auth.signInWithOAuth({
       if (error || !data.url) throw error ?? new Error('URL não gerada')
 
       const result = await WebBrowser.openAuthSessionAsync(data.url, redirectTo)
+      // iOS: openAuthSessionAsync retorna success com a URL — troca o código aqui
+      // Android: retorna cancel porque o deep link dispara auth-callback.tsx
       if (result.type === 'success' && result.url) {
         const url = new URL(result.url)
         const code = url.searchParams.get('code')
         if (code) {
-          const { error: sessionError } = await supabase.auth.exchangeCodeForSession(code)
-          if (sessionError) throw sessionError
+          await supabase.auth.exchangeCodeForSession(code).catch(() => {})
         }
       }
     } catch {
