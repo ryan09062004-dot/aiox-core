@@ -281,11 +281,7 @@ export default function HomeScreen() {
       </View>
 
       {/* ── Métricas ── */}
-      {lastAnalysis === undefined ? (
-        <View style={styles.metricsLoading}>
-          <ActivityIndicator size="small" color="#333" />
-        </View>
-      ) : hasAnalysis ? (
+      {hasAnalysis ? (
         <View style={styles.metricsRow}>
           <View style={styles.metricBlock}>
             <Text style={[styles.metricValue, { color: score ? getScoreColor(score) : '#fff' }]}>
@@ -305,6 +301,23 @@ export default function HomeScreen() {
             </Text>
             <Text style={styles.metricLabel}>Peso</Text>
           </View>
+        </View>
+      ) : lastAnalysis === null ? (
+        <View style={styles.firstStepCard}>
+          <View style={styles.firstStepHeader}>
+            <Ionicons name="trophy-outline" size={20} color="#4CAF50" />
+            <Text style={styles.firstStepTitle}>Descubra seu Shape</Text>
+          </View>
+          {[
+            'Score corporal personalizado',
+            'Plano de treino em 4 semanas',
+            '% de gordura estimada',
+          ].map((item) => (
+            <View key={item} style={styles.firstStepItem}>
+              <Text style={styles.firstStepBullet}>✦</Text>
+              <Text style={styles.firstStepText}>{item}</Text>
+            </View>
+          ))}
         </View>
       ) : null}
 
@@ -438,12 +451,21 @@ const styles = StyleSheet.create({
   },
   evalBtnText: { color: '#fff', fontSize: 15, fontWeight: '700' },
 
-  // Metrics
-  metricsLoading: {
-    height: 70, backgroundColor: '#111', borderRadius: 18,
+  // First step card (no analysis yet)
+  firstStepCard: {
+    backgroundColor: '#111', borderRadius: 18,
     borderWidth: 1, borderColor: '#1E1E1E',
-    alignItems: 'center', justifyContent: 'center',
+    padding: 18, gap: 10,
   },
+  firstStepHeader: {
+    flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 2,
+  },
+  firstStepTitle: { color: '#fff', fontSize: 16, fontWeight: '700' },
+  firstStepItem: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  firstStepBullet: { color: '#4CAF50', fontSize: 11, fontWeight: '800' },
+  firstStepText: { color: '#888', fontSize: 13 },
+
+  // Metrics
   metricsRow: {
     flexDirection: 'row', backgroundColor: '#111',
     borderRadius: 18, borderWidth: 1, borderColor: '#1E1E1E',
