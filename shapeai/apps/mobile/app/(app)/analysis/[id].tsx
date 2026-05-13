@@ -89,7 +89,7 @@ export default function AnalysisLoadingScreen() {
   return (
     <View style={styles.container}>
       <Text style={styles.title}>
-        {done ? 'Avaliação concluída ✓' : 'Analisando seu shape...'}
+        {done ? 'Avaliação concluída ✓' : 'Avaliando seu shape...'}
       </Text>
 
       <View style={styles.barContainer}>

@@ -1,25 +1,23 @@
 import { useState, useCallback } from 'react'
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, RefreshControl, ActivityIndicator } from 'react-native'
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, RefreshControl, ActivityIndicator, Modal, Pressable } from 'react-native'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
+import { Ionicons } from '@expo/vector-icons'
 import { router } from 'expo-router'
 import { listAnalyses } from '../../src/services/analysis.service'
 import { AnalysisHistoryItem } from '../../src/components/history/AnalysisHistoryItem'
 import type { AnalysisSummary } from '@shapeai/shared'
-import { calculateOverallScore, getScoreColor } from '@shapeai/shared'
 import { useFocusEffect } from 'expo-router'
 
-function daysBetween(isoEarlier: string, isoLater: string): number {
-  return Math.floor((new Date(isoLater).getTime() - new Date(isoEarlier).getTime()) / (1000 * 60 * 60 * 24))
-}
-
 export default function HistoryScreen() {
+  const insets = useSafeAreaInsets()
   const [analyses, setAnalyses] = useState<AnalysisSummary[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [isLoadingMore, setIsLoadingMore] = useState(false)
   const [hasMore, setHasMore] = useState(false)
   const [page, setPage] = useState(1)
-  const [isSelectMode, setIsSelectMode] = useState(false)
-  const [selectedIds, setSelectedIds] = useState<string[]>([])
+  const [sortOrder, setSortOrder] = useState<'desc' | 'asc'>('desc')
+  const [showSortMenu, setShowSortMenu] = useState(false)
 
   const load = useCallback(async (resetPage = false) => {
     const targetPage = resetPage ? 1 : page
@@ -33,7 +31,7 @@ export default function HistoryScreen() {
       }
       setHasMore(data.has_more)
     } catch {
-      // mantém estado anterior em caso de erro
+      // mantém estado anterior
     }
   }, [page])
 
@@ -66,43 +64,15 @@ export default function HistoryScreen() {
     }
   }
 
-  const toggleSelectMode = () => {
-    setIsSelectMode(true)
-    setSelectedIds([])
-  }
-
-  const cancelSelectMode = () => {
-    setIsSelectMode(false)
-    setSelectedIds([])
-  }
-
-  const toggleSelect = (id: string) => {
-    setSelectedIds((prev) =>
-      prev.includes(id) ? prev.filter((s) => s !== id) : [...prev, id]
-    )
-  }
-
-  const handleCompare = () => {
-    if (selectedIds.length !== 2) return
-    router.push(`/(app)/compare?id1=${selectedIds[0]}&id2=${selectedIds[1]}` as never)
-  }
-
-  const latestCompletedId = analyses.find((a) => a.status === 'completed')?.id
-
-  // analyses chegam newest-first; completedWithScores segue a mesma ordem
-  const completedWithScores = analyses.filter((a) => a.status === 'completed' && a.scores != null)
-  const latestCompleted = completedWithScores[0]
-  const earliestCompleted = completedWithScores[completedWithScores.length - 1]
-  const latestScore = latestCompleted ? calculateOverallScore(latestCompleted.scores!) : null
-  const earliestScore =
-    earliestCompleted && earliestCompleted.id !== latestCompleted?.id
-      ? calculateOverallScore(earliestCompleted.scores!)
-      : null
-  const evolution = latestScore != null && earliestScore != null ? latestScore - earliestScore : null
-  const daysSinceFirst =
-    earliestCompleted
-      ? daysBetween(earliestCompleted.created_at, new Date().toISOString())
-      : null
+  const visibleAnalyses = analyses
+    .filter((a) => a.status !== 'failed')
+    .slice()
+    .sort((a, b) => {
+      const diff = new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+      return sortOrder === 'desc' ? diff : -diff
+    })
+  const latestCompletedId = visibleAnalyses.find((a) => a.status === 'completed')?.id
+  const completedCount = visibleAnalyses.filter((a) => a.status === 'completed').length
 
   if (isLoading) {
     return (
@@ -116,96 +86,81 @@ export default function HistoryScreen() {
     return (
       <View style={styles.centered}>
         <Text style={styles.emptyIcon}>📊</Text>
-        <Text style={styles.emptyTitle}>Você ainda não fez nenhuma análise</Text>
+        <Text style={styles.emptyTitle}>Nenhuma avaliação ainda</Text>
         <Text style={styles.emptySubtitle}>Capture suas fotos para começar a acompanhar sua evolução.</Text>
         <TouchableOpacity style={styles.startButton} onPress={() => router.push('/(app)/camera')} testID="btn-comecar-agora">
-          <Text style={styles.startButtonText}>Começar agora</Text>
+          <Text style={styles.startButtonText}>Fazer primeira avaliação</Text>
         </TouchableOpacity>
       </View>
     )
   }
 
-  const summaryBlock = completedWithScores.length > 0 ? (
-    <View style={styles.summaryCard}>
-      <Text style={styles.summaryTitle}>Sua jornada</Text>
-      <View style={styles.summaryRow}>
-        <View style={styles.summaryMetric}>
-          <Text style={styles.summaryValue}>{analyses.length}{hasMore ? '+' : ''}</Text>
-          <Text style={styles.summaryLabel}>avaliações</Text>
-        </View>
-        {daysSinceFirst != null && (
-          <View style={styles.summaryMetric}>
-            <Text style={styles.summaryValue}>{daysSinceFirst}</Text>
-            <Text style={styles.summaryLabel}>dias</Text>
-          </View>
-        )}
-        {latestScore != null && (
-          <View style={styles.summaryMetric}>
-            <Text style={[styles.summaryValue, { color: getScoreColor(latestScore) }]}>{latestScore}</Text>
-            <Text style={styles.summaryLabel}>score atual</Text>
-          </View>
-        )}
-        {evolution != null && (
-          <View style={styles.summaryMetric}>
-            <Text style={[styles.summaryValue, { color: evolution >= 0 ? '#4CAF50' : '#F44336' }]}>
-              {evolution >= 0 ? '+' : ''}{evolution}
-            </Text>
-            <Text style={styles.summaryLabel}>evolução</Text>
-          </View>
-        )}
-      </View>
-    </View>
-  ) : null
-
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
+      <View style={[styles.header, { paddingTop: insets.top + 16 }]}>
         <Text style={styles.title}>Avaliações</Text>
-        {isSelectMode ? (
-          <View style={styles.headerActions}>
-            <TouchableOpacity
-              style={[styles.compareButton, selectedIds.length !== 2 && styles.compareButtonDisabled]}
-              onPress={handleCompare}
-              disabled={selectedIds.length !== 2}
-              testID="btn-ver-comparativo"
-            >
-              <Text style={styles.compareButtonText}>Ver comparativo</Text>
-            </TouchableOpacity>
-            <TouchableOpacity onPress={cancelSelectMode} testID="btn-cancelar-selecao">
-              <Text style={styles.cancelText}>Cancelar</Text>
-            </TouchableOpacity>
-          </View>
-        ) : (
-          <TouchableOpacity onPress={toggleSelectMode} testID="btn-comparar">
-            <Text style={styles.compareLink}>Comparar</Text>
+        <View style={styles.headerActions}>
+          <TouchableOpacity style={styles.newButton} onPress={() => router.push('/(app)/camera')}>
+            <Ionicons name="add" size={16} color="#555" />
+            <Text style={styles.newButtonText}>Criar nova</Text>
           </TouchableOpacity>
-        )}
+          <TouchableOpacity style={styles.sortButton} onPress={() => setShowSortMenu(true)}>
+            <Ionicons name="filter" size={18} color="#888" />
+          </TouchableOpacity>
+        </View>
       </View>
 
+      <Modal visible={showSortMenu} transparent animationType="fade" onRequestClose={() => setShowSortMenu(false)}>
+        <Pressable style={styles.modalOverlay} onPress={() => setShowSortMenu(false)}>
+          <View style={styles.sortMenu}>
+            <Text style={styles.sortMenuTitle}>Ordenar por</Text>
+            {(['desc', 'asc'] as const).map((order) => (
+              <TouchableOpacity
+                key={order}
+                style={styles.sortOption}
+                onPress={() => { setSortOrder(order); setShowSortMenu(false) }}
+              >
+                <Text style={[styles.sortOptionText, sortOrder === order && styles.sortOptionTextActive]}>
+                  {order === 'desc' ? 'Mais recente primeiro' : 'Mais antiga primeiro'}
+                </Text>
+                {sortOrder === order && <Ionicons name="checkmark" size={16} color="#4CAF50" />}
+              </TouchableOpacity>
+            ))}
+          </View>
+        </Pressable>
+      </Modal>
+
       <FlatList
-        data={analyses}
+        data={visibleAnalyses}
         keyExtractor={(item) => item.id}
         renderItem={({ item, index }) => {
-          // analyses são newest-first: o item anterior no tempo é o próximo no array
-          const prev = analyses[index + 1]
-          const previousScore = prev?.scores ? calculateOverallScore(prev.scores) : null
+          const isLatest = item.id === latestCompletedId
+          const total = visibleAnalyses.length
+          const isFirstHistory = !isLatest && visibleAnalyses.findIndex((a) => a.id === latestCompletedId) !== -1 && index === (visibleAnalyses.findIndex((a) => a.id === latestCompletedId) + 1)
           return (
-            <AnalysisHistoryItem
-              item={item}
-              isLatest={item.id === latestCompletedId}
-              previousScore={previousScore}
-              isSelectMode={isSelectMode}
-              isSelected={selectedIds.includes(item.id)}
-              onSelect={() => toggleSelect(item.id)}
-              onPress={
-                item.status === 'completed'
-                  ? () => router.push(`/(app)/analysis/${item.id}/report` as never)
-                  : undefined
-              }
-            />
+            <>
+              {isFirstHistory && visibleAnalyses.length > 1 && (
+                <Text style={styles.sectionLabel}>Histórico</Text>
+              )}
+              <AnalysisHistoryItem
+                item={item}
+                isLatest={isLatest}
+                index={index}
+                total={total}
+                onPress={
+                  item.status === 'completed'
+                    ? () => router.push(`/(app)/analysis/${item.id}/report` as never)
+                    : undefined
+                }
+                onWorkout={
+                  item.status === 'completed'
+                    ? () => router.push(`/(app)/analysis/${item.id}/report` as never)
+                    : undefined
+                }
+              />
+            </>
           )
         }}
-        ListHeaderComponent={summaryBlock}
         contentContainerStyle={styles.list}
         refreshControl={
           <RefreshControl refreshing={isRefreshing} onRefresh={handleRefresh} tintColor="#4CAF50" />
@@ -227,32 +182,44 @@ export default function HistoryScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#0A0A0A' },
   centered: { flex: 1, backgroundColor: '#0A0A0A', justifyContent: 'center', alignItems: 'center', padding: 32 },
-  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 24, paddingTop: 60, paddingBottom: 12 },
+  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 24, paddingBottom: 16 },
   title: { fontSize: 24, fontWeight: 'bold', color: '#fff' },
-  headerActions: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  compareLink: { color: '#4CAF50', fontSize: 15, fontWeight: '600' },
-  compareButton: { backgroundColor: '#4CAF50', paddingHorizontal: 14, paddingVertical: 8, borderRadius: 10 },
-  compareButtonDisabled: { backgroundColor: '#1A3A1A', opacity: 0.5 },
-  compareButtonText: { color: '#fff', fontSize: 13, fontWeight: '700' },
-  cancelText: { color: '#888', fontSize: 14 },
+  countBadge: { backgroundColor: '#1A1A1A', borderRadius: 20, paddingHorizontal: 10, paddingVertical: 4, borderWidth: 1, borderColor: '#2A2A2A' },
+  countText: { color: '#888', fontSize: 13, fontWeight: '600' },
   list: { paddingHorizontal: 16, paddingBottom: 32 },
-  summaryCard: {
-    backgroundColor: '#111',
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 16,
-    borderWidth: 1,
-    borderColor: '#222',
-  },
-  summaryTitle: { fontSize: 12, fontWeight: '600', color: '#555', marginBottom: 12, textTransform: 'uppercase', letterSpacing: 0.8 },
-  summaryRow: { flexDirection: 'row', justifyContent: 'space-between' },
-  summaryMetric: { alignItems: 'center' },
-  summaryValue: { fontSize: 22, fontWeight: '800', color: '#fff' },
-  summaryLabel: { fontSize: 11, color: '#555', marginTop: 2 },
   emptyIcon: { fontSize: 48, marginBottom: 16 },
   emptyTitle: { fontSize: 18, fontWeight: '600', color: '#fff', textAlign: 'center', marginBottom: 8 },
   emptySubtitle: { fontSize: 14, color: '#666', textAlign: 'center', marginBottom: 32 },
   startButton: { backgroundColor: '#4CAF50', borderRadius: 16, paddingVertical: 14, paddingHorizontal: 32 },
   startButtonText: { color: '#fff', fontSize: 16, fontWeight: '600' },
   loadingMore: { alignItems: 'center', paddingVertical: 20 },
+  sectionLabel: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#555',
+    textTransform: 'uppercase',
+    letterSpacing: 1.2,
+    marginBottom: 10,
+    marginTop: 4,
+  },
+  headerActions: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  newButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#2A2A2A',
+    backgroundColor: '#111',
+  },
+  newButtonText: { color: '#555', fontSize: 12, fontWeight: '600' },
+  sortButton: { padding: 8 },
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'flex-end' },
+  sortMenu: { backgroundColor: '#111', borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 24 },
+  sortMenuTitle: { fontSize: 13, color: '#555', fontWeight: '600', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 16 },
+  sortOption: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: '#1A1A1A' },
+  sortOptionText: { fontSize: 16, color: '#888' },
+  sortOptionTextActive: { color: '#fff', fontWeight: '600' },
 })

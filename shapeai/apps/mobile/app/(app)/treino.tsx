@@ -1,12 +1,14 @@
-import { useEffect, useState, useCallback } from 'react'
+import { useState, useCallback } from 'react'
 import {
   View, Text, StyleSheet, TouchableOpacity,
-  ActivityIndicator, ScrollView,
+  ActivityIndicator, ScrollView, Modal, Pressable,
 } from 'react-native'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import { router, useFocusEffect } from 'expo-router'
 import { Ionicons } from '@expo/vector-icons'
 import { type WorkoutWeek, type PrimaryGoal, GOAL_LABEL } from '@shapeai/shared'
+import type { AnalysisSummary } from '@shapeai/shared'
 import { listAnalyses, getAnalysisResult } from '../../src/services/analysis.service'
 import { getUserProfile } from '../../src/services/profile.service'
 import WorkoutDayCard from '../../src/components/workout/WorkoutDayCard'
@@ -18,52 +20,65 @@ function elapsedWeek(completedAt: string, total: number) {
   const days = Math.floor((Date.now() - new Date(completedAt).getTime()) / 86_400_000)
   return Math.min(Math.max(Math.floor(days / 7), 0), total - 1)
 }
+function formatDate(iso: string): string {
+  return new Date(iso).toLocaleDateString('pt-BR', { day: 'numeric', month: 'short' })
+}
 
 export default function TreinoTab() {
+  const insets = useSafeAreaInsets()
   const [loading, setLoading] = useState(true)
-  const [analysisId, setAnalysisId] = useState<string | null>(null)
-  const [completedAt, setCompletedAt] = useState<string | null>(null)
+  const [loadingWorkout, setLoadingWorkout] = useState(false)
+  const [completedAnalyses, setCompletedAnalyses] = useState<AnalysisSummary[]>([])
+  const [selectedIndex, setSelectedIndex] = useState(0)
+  const [showPicker, setShowPicker] = useState(false)
   const [weeks, setWeeks] = useState<WorkoutWeek[]>([])
   const [goal, setGoal] = useState<PrimaryGoal | null>(null)
   const [selectedWeek, setSelectedWeek] = useState(0)
   const [completed, setCompleted] = useState<Set<string>>(new Set())
 
+  const loadWorkout = useCallback(async (analysis: AnalysisSummary, isInitial = false) => {
+    if (!isInitial) setLoadingWorkout(true)
+    try {
+      const result = await getAnalysisResult(analysis.id)
+      const w = result.workout_plan.weeks as unknown as WorkoutWeek[]
+      setWeeks(w)
+      const raw = await AsyncStorage.getItem(storageKey(analysis.id))
+      setCompleted(raw ? new Set(JSON.parse(raw)) : new Set())
+      setSelectedWeek(analysis.completed_at ? elapsedWeek(analysis.completed_at, w.length) : 0)
+    } finally {
+      if (!isInitial) setLoadingWorkout(false)
+    }
+  }, [])
+
   const load = useCallback(async () => {
     setLoading(true)
     try {
       const [analysesRes, profileRes] = await Promise.allSettled([
-        listAnalyses(10),
+        listAnalyses(1),
         getUserProfile(),
       ])
-
       if (profileRes.status === 'fulfilled') setGoal(profileRes.value.primary_goal)
-
       if (analysesRes.status === 'rejected') return
 
-      const last = analysesRes.value.analyses.find(a => a.status === 'completed') ?? null
-      if (!last) return
-
-      setAnalysisId(last.id)
-      setCompletedAt(last.completed_at ?? null)
-
-      const result = await getAnalysisResult(last.id)
-      const w = result.workout_plan.weeks as unknown as WorkoutWeek[]
-      setWeeks(w)
-
-      const raw = await AsyncStorage.getItem(storageKey(last.id))
-      if (raw) setCompleted(new Set(JSON.parse(raw)))
-
-      if (last.completed_at) {
-        setSelectedWeek(elapsedWeek(last.completed_at, w.length))
-      }
+      const all = analysesRes.value.analyses.filter(a => a.status === 'completed')
+      setCompletedAnalyses(all)
+      setSelectedIndex(0)
+      if (all.length > 0) await loadWorkout(all[0], true)
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [loadWorkout])
 
   useFocusEffect(useCallback(() => { load() }, [load]))
 
+  const handleSelectAnalysis = async (index: number) => {
+    setShowPicker(false)
+    setSelectedIndex(index)
+    await loadWorkout(completedAnalyses[index])
+  }
+
   const toggleSession = useCallback(async (weekNumber: number, day: string) => {
+    const analysisId = completedAnalyses[selectedIndex]?.id
     if (!analysisId) return
     const key = sessionKey(weekNumber, day)
     setCompleted((prev) => {
@@ -72,7 +87,7 @@ export default function TreinoTab() {
       AsyncStorage.setItem(storageKey(analysisId), JSON.stringify([...next]))
       return next
     })
-  }, [analysisId])
+  }, [completedAnalyses, selectedIndex])
 
   const handleNewAnalysis = async () => {
     const skip = await AsyncStorage.getItem(PHOTO_TIP_STORAGE_KEY)
@@ -103,6 +118,7 @@ export default function TreinoTab() {
     )
   }
 
+  const selectedAnalysis = completedAnalyses[selectedIndex]
   const currentWeek = weeks[selectedWeek]
   const goalLabel = goal ? GOAL_LABEL[goal] : '—'
   const sessionsPerWeek = weeks[0]?.sessions.length ?? 0
@@ -115,8 +131,42 @@ export default function TreinoTab() {
 
   return (
     <View style={styles.container}>
-      <View style={styles.headerCard}>
-        <Text style={styles.screenTitle}>Treino</Text>
+
+      <Modal visible={showPicker} transparent animationType="fade" onRequestClose={() => setShowPicker(false)}>
+        <Pressable style={styles.modalOverlay} onPress={() => setShowPicker(false)}>
+          <View style={styles.pickerMenu}>
+            <Text style={styles.pickerTitle}>Selecionar avaliação</Text>
+            {completedAnalyses.map((a, index) => (
+              <TouchableOpacity
+                key={a.id}
+                style={styles.pickerOption}
+                onPress={() => handleSelectAnalysis(index)}
+              >
+                <View>
+                  <Text style={[styles.pickerOptionText, index === selectedIndex && styles.pickerOptionTextActive]}>
+                    {index === 0 ? 'Mais recente' : `Avaliação de ${formatDate(a.created_at)}`}
+                  </Text>
+                  <Text style={styles.pickerOptionDate}>{formatDate(a.created_at)}</Text>
+                </View>
+                {index === selectedIndex && <Ionicons name="checkmark" size={16} color="#4CAF50" />}
+              </TouchableOpacity>
+            ))}
+          </View>
+        </Pressable>
+      </Modal>
+
+      <View style={[styles.headerCard, { paddingTop: insets.top + 16 }]}>
+        {completedAnalyses.length > 1 && (
+          <View style={styles.pickerRow}>
+            <TouchableOpacity style={styles.pickerTrigger} onPress={() => setShowPicker(true)}>
+              <Text style={styles.pickerTriggerText}>
+                {selectedIndex === 0 ? 'Mais recente' : formatDate(selectedAnalysis.created_at)}
+              </Text>
+              <Ionicons name="chevron-down" size={12} color="#aaa" />
+            </TouchableOpacity>
+          </View>
+        )}
+
         <View style={styles.headerBody}>
           <View style={styles.headerInfo}>
             <Text style={styles.headerLabel}>Seu objetivo</Text>
@@ -124,8 +174,14 @@ export default function TreinoTab() {
             <Text style={styles.planMeta}>4 semanas · {sessionsPerWeek} treinos/semana</Text>
           </View>
           <View style={styles.scoreBlock}>
-            <Text style={styles.scoreValue}>{completionPct}%</Text>
-            <Text style={styles.scorePts}>concluído</Text>
+            {loadingWorkout ? (
+              <ActivityIndicator size="small" color="#4CAF50" />
+            ) : (
+              <>
+                <Text style={styles.scoreValue}>{completionPct}%</Text>
+                <Text style={styles.scorePts}>concluído</Text>
+              </>
+            )}
           </View>
         </View>
 
@@ -160,7 +216,9 @@ export default function TreinoTab() {
       </ScrollView>
 
       <ScrollView style={styles.daysScroll} contentContainerStyle={styles.daysContent}>
-        {currentWeek?.sessions.map((session, i) => (
+        {loadingWorkout ? (
+          <ActivityIndicator color="#4CAF50" style={{ marginTop: 40 }} />
+        ) : currentWeek?.sessions.map((session, i) => (
           <WorkoutDayCard
             key={i}
             session={session}
@@ -193,9 +251,16 @@ const styles = StyleSheet.create({
   headerCard: {
     backgroundColor: '#111',
     borderBottomWidth: 1, borderBottomColor: '#1A1A1A',
-    paddingHorizontal: 20, paddingTop: 60, paddingBottom: 16, gap: 14,
+    paddingHorizontal: 20, paddingBottom: 16, gap: 14,
   },
-  screenTitle: { color: '#fff', fontSize: 28, fontWeight: '800' },
+  pickerRow: { alignItems: 'center' },
+  pickerTrigger: {
+    flexDirection: 'row', alignItems: 'center', gap: 5,
+    backgroundColor: '#1A1A1A', paddingHorizontal: 12, paddingVertical: 6,
+    borderRadius: 20, borderWidth: 1, borderColor: '#2E2E2E',
+  },
+  pickerTriggerText: { color: '#aaa', fontSize: 12, fontWeight: '600' },
+
   headerBody: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between' },
   headerInfo: { gap: 3 },
   headerLabel: { color: '#444', fontSize: 11, fontWeight: '600', letterSpacing: 0.5, textTransform: 'uppercase' },
@@ -224,4 +289,12 @@ const styles = StyleSheet.create({
 
   daysScroll: { flex: 1 },
   daysContent: { padding: 20, paddingBottom: 40 },
+
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'flex-end' },
+  pickerMenu: { backgroundColor: '#111', borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 24 },
+  pickerTitle: { fontSize: 13, color: '#555', fontWeight: '600', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 16 },
+  pickerOption: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: '#1A1A1A' },
+  pickerOptionText: { fontSize: 16, color: '#888' },
+  pickerOptionTextActive: { color: '#fff', fontWeight: '600' },
+  pickerOptionDate: { fontSize: 12, color: '#444', marginTop: 2 },
 })

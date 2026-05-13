@@ -58,7 +58,7 @@ describe('HistoryScreen', () => {
   it('exibe análises na lista', async () => {
     mockList.mockResolvedValue({ analyses: [completedAnalysis], has_more: false })
     const { getByText } = render(<HistoryScreen />)
-    await waitFor(() => expect(getByText('15/04/2026')).toBeTruthy())
+    await waitFor(() => expect(getByText('15 de abril de 2026')).toBeTruthy())
   })
 
   it('navega para report ao tocar em análise completed', async () => {

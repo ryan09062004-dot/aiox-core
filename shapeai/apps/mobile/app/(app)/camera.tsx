@@ -26,7 +26,7 @@ const STEP_CONFIG: Record<CaptureStep, { label: string; number: number; instruct
   front: {
     label: 'Frente',
     number: 1,
-    instruction: 'Fique de frente, braços levemente afastados do corpo',
+    instruction: 'Fique de frente, braços levemente afastados',
   },
   back: {
     label: 'Costas',

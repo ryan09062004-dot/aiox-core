@@ -9,6 +9,7 @@ import {
   ScrollView,
   TextInput,
 } from 'react-native'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { router } from 'expo-router'
 import { useAuthStore } from '../../src/stores/auth.store'
 import { useSubscription } from '../../src/hooks/useSubscription'
@@ -25,29 +26,26 @@ const PERSONAS: Array<{
   id: 'rafael' | 'marina' | 'bruno'
   name: string
   tagline: string
-  example: string
 }> = [
   {
     id: 'rafael',
     name: 'Rafael',
-    tagline: 'Dados, progressão e resultado',
-    example: '"Excelente dado — progressão consistente."',
+    tagline: 'Nem mole nem pesado — só o que realmente funciona.',
   },
   {
     id: 'marina',
     name: 'Marina',
-    tagline: 'Seu ritmo, sua evolução',
-    example: '"Você conseguiu! Isso é resultado do seu esforço."',
+    tagline: 'Sem pressão, sem julgamento. Cada passo seu importa.',
   },
   {
     id: 'bruno',
     name: 'Bruno',
-    tagline: 'Sem desculpas, só resultados',
-    example: '"Isso é o mínimo. Agora suba o nível."',
+    tagline: 'Não vim aqui pra ser seu amigo. Vim pra te transformar.',
   },
 ]
 
 export default function ProfileScreen() {
+  const insets = useSafeAreaInsets()
   const { signOut } = useAuthStore()
   const { subscription } = useSubscription()
   const isPro = subscription?.status === 'pro'
@@ -139,7 +137,7 @@ export default function ProfileScreen() {
   }
 
   return (
-    <ScrollView style={styles.scroll} contentContainerStyle={styles.container}>
+    <ScrollView style={styles.scroll} contentContainerStyle={[styles.container, { paddingTop: insets.top + 20 }]}>
       <Text style={styles.pageTitle}>Perfil</Text>
 
       {/* Plano atual */}
@@ -259,9 +257,9 @@ export default function ProfileScreen() {
         </View>
       </View>
 
-      {/* Coach Virtual — Persona */}
+      {/* Personal Virtual — Persona */}
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Coach Virtual</Text>
+        <Text style={styles.sectionTitle}>Personal Virtual</Text>
         <View style={styles.personaGrid}>
           {PERSONAS.map((p) => (
             <TouchableOpacity
@@ -274,7 +272,6 @@ export default function ProfileScreen() {
                 {p.name}
               </Text>
               <Text style={styles.personaTagline}>{p.tagline}</Text>
-              <Text style={styles.personaExample}>{p.example}</Text>
             </TouchableOpacity>
           ))}
         </View>
@@ -290,7 +287,7 @@ export default function ProfileScreen() {
 
 const styles = StyleSheet.create({
   scroll: { flex: 1, backgroundColor: '#0A0A0A' },
-  container: { paddingTop: 60, paddingHorizontal: 24, paddingBottom: 48 },
+  container: { paddingHorizontal: 24, paddingBottom: 48 },
   centered: { flex: 1, backgroundColor: '#0A0A0A', justifyContent: 'center', alignItems: 'center' },
   pageTitle: { fontSize: 28, fontWeight: 'bold', color: '#fff', marginBottom: 24 },
   planCard: {

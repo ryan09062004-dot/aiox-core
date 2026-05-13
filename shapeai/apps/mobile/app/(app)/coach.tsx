@@ -9,8 +9,9 @@ import {
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
-  SafeAreaView,
+  Image,
 } from 'react-native'
+import { SafeAreaView } from 'react-native-safe-area-context'
 import type { TextStyle, StyleProp } from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
 import { router, useFocusEffect } from 'expo-router'
@@ -43,6 +44,12 @@ const PERSONA_NAMES: Record<string, string> = {
   rafael: 'Rafael',
   marina: 'Marina',
   bruno: 'Bruno',
+}
+
+const PERSONA_IMAGES: Record<string, ReturnType<typeof require>> = {
+  Rafael: require('../../assets/coaches/Rafael.png'),
+  Marina: require('../../assets/coaches/Marina.png'),
+  Bruno: require('../../assets/coaches/Bruno.png'),
 }
 
 const QUICK_SUGGESTIONS = [
@@ -143,7 +150,7 @@ export default function CoachScreen() {
   const showSuggestions = messages.length === 0 && !limitReached
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView style={styles.safeArea} edges={['top']}>
       <KeyboardAvoidingView
         style={styles.flex}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -151,11 +158,12 @@ export default function CoachScreen() {
       >
         {/* Header */}
         <View style={styles.header}>
-          <View style={styles.avatarCircle}>
-            <Ionicons name="fitness" size={20} color="#4CAF50" />
-          </View>
+          <Image
+            source={PERSONA_IMAGES[coachName]}
+            style={styles.avatarCircle}
+          />
           <View style={styles.headerText}>
-            <Text style={styles.headerName}>Coach {coachName}</Text>
+            <Text style={styles.headerName}>{coachName}</Text>
             <Text style={styles.headerSub}>Personal trainer virtual</Text>
           </View>
           <TouchableOpacity onPress={() => router.push('/(app)/profile')} style={styles.settingsBtn}>
@@ -172,10 +180,11 @@ export default function CoachScreen() {
         >
           {showSuggestions && (
             <View style={styles.emptyState}>
-              <View style={styles.emptyIcon}>
-                <Ionicons name="fitness" size={32} color="#4CAF50" />
-              </View>
-              <Text style={styles.emptyTitle}>Olá! Sou o Coach {coachName}</Text>
+              <Image
+              source={PERSONA_IMAGES[coachName]}
+              style={styles.emptyIcon}
+            />
+              <Text style={styles.emptyTitle}>Olá! Sou o Personal {coachName}</Text>
               <Text style={styles.emptyBody}>
                 Estou aqui para ajudar com seu treino, explicar exercícios e acompanhar sua evolução.
                 Escolha uma sugestão ou escreva sua dúvida.
@@ -249,7 +258,7 @@ export default function CoachScreen() {
               style={styles.textInput}
               value={input}
               onChangeText={setInput}
-              placeholder="Pergunte ao seu coach..."
+              placeholder="Pergunte ao seu personal..."
               placeholderTextColor="#555"
               multiline
               maxLength={500}
@@ -288,11 +297,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: '#0D1F0D',
-    borderWidth: 1,
-    borderColor: '#4CAF50',
-    justifyContent: 'center',
-    alignItems: 'center',
+    overflow: 'hidden',
   },
   headerText: { flex: 1 },
   headerName: { color: '#fff', fontSize: 16, fontWeight: '700' },
@@ -304,14 +309,12 @@ const styles = StyleSheet.create({
 
   emptyState: { alignItems: 'center', paddingTop: 32, paddingHorizontal: 16, gap: 12 },
   emptyIcon: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    backgroundColor: '#0D1F0D',
-    borderWidth: 1,
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    borderWidth: 2,
     borderColor: '#4CAF50',
-    justifyContent: 'center',
-    alignItems: 'center',
+    overflow: 'hidden',
     marginBottom: 4,
   },
   emptyTitle: { color: '#fff', fontSize: 18, fontWeight: '700', textAlign: 'center' },

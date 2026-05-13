@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert, ActivityIndicator } from 'react-native'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { router } from 'expo-router'
 import {
   getOfferings,
@@ -27,6 +28,7 @@ const PRO_BENEFITS = [
 type Plan = 'monthly' | 'annual'
 
 export default function PaywallScreen() {
+  const insets = useSafeAreaInsets()
   const { pollUntilPro } = useSubscription()
   const [selectedPlan, setSelectedPlan] = useState<Plan>('annual')
   // Refs para packages: usados apenas em event handlers, evitando stale closures
@@ -88,7 +90,7 @@ export default function PaywallScreen() {
   }
 
   return (
-    <ScrollView style={styles.scroll} contentContainerStyle={styles.container} bounces={false}>
+    <ScrollView style={styles.scroll} contentContainerStyle={[styles.container, { paddingTop: insets.top + 24 }]} bounces={false}>
       <Text style={styles.title}>Escolha seu plano</Text>
       <Text style={styles.subtitle}>Desbloqueie todo o potencial do ShapeAI</Text>
 

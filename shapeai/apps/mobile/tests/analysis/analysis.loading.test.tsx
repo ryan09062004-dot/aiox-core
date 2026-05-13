@@ -25,7 +25,7 @@ describe('AnalysisLoadingScreen', () => {
   it('exibe título e step inicial de progresso', () => {
     mockPoll.mockReturnValue(new Promise(() => {})) // never resolves
     const { getByText } = render(<AnalysisLoadingScreen />)
-    expect(getByText(/Analisando seu shape/i)).toBeTruthy()
+    expect(getByText(/Avaliando seu shape/i)).toBeTruthy()
     expect(getByText(/IA analisando suas fotos/i)).toBeTruthy()
   })
 

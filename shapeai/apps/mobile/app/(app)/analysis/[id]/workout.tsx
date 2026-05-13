@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   ActivityIndicator,
 } from 'react-native'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import { useLocalSearchParams, router } from 'expo-router'
 import {
@@ -27,6 +28,7 @@ function sessionKey(weekNumber: number, day: string) {
 }
 
 export default function WorkoutScreen() {
+  const insets = useSafeAreaInsets()
   const { id } = useLocalSearchParams<{ id: string }>()
   const [weeks, setWeeks] = useState<WorkoutWeek[]>([])
   const [goal, setGoal] = useState<PrimaryGoal | null>(null)
@@ -92,7 +94,7 @@ export default function WorkoutScreen() {
 
   return (
     <View style={styles.container}>
-      <View style={styles.headerCard}>
+      <View style={[styles.headerCard, { paddingTop: insets.top + 16 }]}>
         <View style={styles.headerTop}>
           <TouchableOpacity onPress={() => router.back()}>
             <Text style={styles.backBtn}>← Voltar</Text>
@@ -167,7 +169,6 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#1A1A1A',
     paddingHorizontal: 20,
-    paddingTop: 20,
     paddingBottom: 16,
     gap: 14,
   },

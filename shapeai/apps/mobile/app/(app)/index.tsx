@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react'
 import {
   View, Text, StyleSheet, TouchableOpacity,
-  ActivityIndicator, Image, ScrollView, TextInput,
+  ActivityIndicator, Image, ScrollView, TextInput, Share, ImageBackground,
 } from 'react-native'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { LinearGradient } from 'expo-linear-gradient'
 import * as ImagePicker from 'expo-image-picker'
 import Svg, { Circle } from 'react-native-svg'
@@ -11,11 +12,76 @@ import { Ionicons } from '@expo/vector-icons'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import { useAuthStore } from '../../src/stores/auth.store'
 import { PHOTO_TIP_STORAGE_KEY } from './photo-tip'
+import { WorkoutShareCard } from '../../src/components/workout/WorkoutShareCard'
 import { useSubscription } from '../../src/hooks/useSubscription'
 import { getUserProfile } from '../../src/services/profile.service'
 import { listAnalyses, getAnalysisResult } from '../../src/services/analysis.service'
 import { GOAL_LABEL, getScoreColor } from '@shapeai/shared'
 import type { AnalysisSummary, WorkoutSession, PrimaryGoal } from '@shapeai/shared'
+
+// ─── Frases motivacionais ─────────────────────────────────────────────────────
+
+const UNSPLASH_BASE = 'https://images.unsplash.com/photo'
+
+const QUOTES: { text: string; photo: string }[] = [
+  { text: 'Consistência bate motivação todo dia.',                                         photo: '1571019613454-1cb2f99b2d8b' },
+  { text: 'Seu único concorrente é quem você era ontem.',                                  photo: '1534438327276-14e5300c3a48' },
+  { text: 'Progresso, não perfeição.',                                                     photo: '1517836357463-d25dfeac3438' },
+  { text: 'Todo grande shape começou com o primeiro treino.',                              photo: '1526506118085-60ce8714f8c5' },
+  { text: 'Dor de hoje, resultado de amanhã.',                                             photo: '1581009146145-b5ef050c2e1e' },
+  { text: 'Disciplina é a ponte entre metas e conquistas.',                                photo: '1549060279-7e168fcee0c2' },
+  { text: 'O corpo alcança o que a mente acredita.',                                       photo: '1541534741688-6078c6bfb5c5' },
+  { text: 'Cada repetição te aproxima da melhor versão de você.',                          photo: '1574680096145-d05b474e2155' },
+  { text: 'Não pare quando estiver cansado. Pare quando terminar.',                        photo: '1552674605-db5fecabfe68' },
+  { text: 'Força não vem do que você consegue fazer. Vem de superar o que achava impossível.', photo: '1506629082955-511b1aa562c8' },
+  { text: 'Comece devagar. Só não pare.',                                                  photo: '1571019613454-1cb2f99b2d8b' },
+  { text: 'O shape dos seus sonhos exige o esforço que outros evitam.',                    photo: '1534438327276-14e5300c3a48' },
+  { text: 'Treinar é um presente que você dá ao seu futuro.',                              photo: '1517836357463-d25dfeac3438' },
+  { text: 'Resultados não mentem. Desculpas não treinam.',                                 photo: '1526506118085-60ce8714f8c5' },
+  { text: 'Cada dia é uma nova chance de ser melhor.',                                     photo: '1581009146145-b5ef050c2e1e' },
+  { text: 'Seu shape é construído fora da zona de conforto.',                              photo: '1549060279-7e168fcee0c2' },
+  { text: 'Quem treina hoje, descansa com orgulho amanhã.',                                photo: '1541534741688-6078c6bfb5c5' },
+  { text: 'Foco, fé e ferro.',                                                             photo: '1574680096145-d05b474e2155' },
+  { text: 'Um treino ruim ainda é melhor que nenhum.',                                     photo: '1552674605-db5fecabfe68' },
+  { text: 'Você já chegou até aqui. Não para agora.',                                      photo: '1506629082955-511b1aa562c8' },
+]
+
+function getDailyQuote() {
+  const now = new Date()
+  const dayOfYear = Math.floor((now.getTime() - new Date(now.getFullYear(), 0, 0).getTime()) / 86_400_000)
+  return QUOTES[dayOfYear % QUOTES.length]
+}
+
+function DailyQuoteCard() {
+  const { text, photo } = getDailyQuote()
+  const uri = `${UNSPLASH_BASE}-${photo}?auto=format&fit=crop&w=800&q=80`
+
+  function handleShare() {
+    Share.share({ message: `"${text}" — ShapeAI` })
+  }
+
+  return (
+    <ImageBackground
+      source={{ uri }}
+      style={qStyles.card}
+      imageStyle={qStyles.image}
+    >
+      <LinearGradient
+        colors={['transparent', 'rgba(0,0,0,0.55)', 'rgba(0,0,0,0.92)']}
+        style={qStyles.overlay}
+      >
+        <Text style={qStyles.quoteText}>{text}</Text>
+        <View style={qStyles.footer}>
+          <Text style={qStyles.label}>Frase do dia</Text>
+          <TouchableOpacity style={qStyles.shareBtn} onPress={handleShare}>
+            <Ionicons name="share-outline" size={13} color="#aaa" />
+            <Text style={qStyles.shareBtnText}>Compartilhar</Text>
+          </TouchableOpacity>
+        </View>
+      </LinearGradient>
+    </ImageBackground>
+  )
+}
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -31,6 +97,10 @@ function sessionKey(w: number, d: string) { return `${w}_${d}` }
 function elapsedWeek(completedAt: string, total: number) {
   const days = Math.floor((Date.now() - new Date(completedAt).getTime()) / 86_400_000)
   return Math.min(Math.max(Math.floor(days / 7), 0), total - 1)
+}
+function estimateDuration(exercises: WorkoutSession['exercises']): number {
+  const secs = exercises.reduce((acc, ex) => acc + ex.sets * (45 + ex.rest_seconds), 0)
+  return Math.round(secs / 60)
 }
 function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit' })
@@ -62,6 +132,7 @@ function Ring({ pct, size = 56 }: { pct: number; size?: number }) {
 // ─── Screen ──────────────────────────────────────────────────────────────────
 
 export default function HomeScreen() {
+  const insets = useSafeAreaInsets()
   const { session, isGuest } = useAuthStore()
   const { subscription } = useSubscription()
   const isPro = subscription?.status === 'pro'
@@ -75,6 +146,7 @@ export default function HomeScreen() {
   const [displayName, setDisplayName] = useState<string | null>(null)
   const [editingName, setEditingName] = useState(false)
   const [nameInput, setNameInput] = useState('')
+  const [shareVisible, setShareVisible] = useState(false)
 
   useEffect(() => {
     async function loadAvatar() {
@@ -184,7 +256,7 @@ export default function HomeScreen() {
   return (
     <ScrollView
       style={styles.scroll}
-      contentContainerStyle={styles.container}
+      contentContainerStyle={[styles.container, { paddingTop: insets.top + 20 }]}
       showsVerticalScrollIndicator={false}
     >
       {/* ── Header ── */}
@@ -219,7 +291,7 @@ export default function HomeScreen() {
         </View>
         {isPro ? (
           <LinearGradient
-            colors={['#1B4332', '#2D6A4F']}
+            colors={['#B8860B', '#FFD700', '#B8860B']}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
             style={styles.badgePro}
@@ -338,7 +410,7 @@ export default function HomeScreen() {
             <View style={styles.planInfo}>
               <Text style={styles.planFocus}>{todayWorkout.session.focus}</Text>
               <Text style={styles.planMeta}>
-                {todayWorkout.session.exercises.length} exercícios · Semana {todayWorkout.weekNumber}
+                {todayWorkout.session.exercises.length} exercícios · ~{estimateDuration(todayWorkout.session.exercises)} min · Sem. {todayWorkout.weekNumber}
               </Text>
               {todayWorkout.isCompleted && (
                 <View style={styles.planDoneBadge}>
@@ -351,7 +423,37 @@ export default function HomeScreen() {
               <Text style={styles.planPct}>{planPct}%</Text>
             </View>
           </View>
+
+          <View style={styles.exercisePreview}>
+            {todayWorkout.session.exercises.slice(0, 3).map((ex, i) => (
+              <View key={i} style={styles.exerciseRow}>
+                <Text style={styles.exerciseName} numberOfLines={1}>{ex.name}</Text>
+                <Text style={styles.exerciseSets}>{ex.sets}×{ex.reps}</Text>
+              </View>
+            ))}
+            {todayWorkout.session.exercises.length > 3 && (
+              <Text style={styles.exerciseMore}>+{todayWorkout.session.exercises.length - 3} mais</Text>
+            )}
+          </View>
+
+          {todayWorkout.isCompleted && (
+            <TouchableOpacity style={styles.shareWorkoutBtn} onPress={() => setShareVisible(true)}>
+              <Ionicons name="share-outline" size={15} color="#4CAF50" />
+              <Text style={styles.shareWorkoutText}>Compartilhar treino</Text>
+            </TouchableOpacity>
+          )}
         </TouchableOpacity>
+      )}
+
+      {todayWorkout?.kind === 'session' && (
+        <WorkoutShareCard
+          visible={shareVisible}
+          onClose={() => setShareVisible(false)}
+          session={todayWorkout.session}
+          weekNumber={todayWorkout.weekNumber}
+          score={score}
+          duration={estimateDuration(todayWorkout.session.exercises)}
+        />
       )}
 
       {todayWorkout?.kind === 'rest' && (
@@ -360,6 +462,8 @@ export default function HomeScreen() {
           <Text style={styles.restText}>🛌  Dia de descanso — volte amanhã mais forte!</Text>
         </View>
       )}
+
+      <DailyQuoteCard />
     </ScrollView>
   )
 }
@@ -368,14 +472,14 @@ export default function HomeScreen() {
 
 const styles = StyleSheet.create({
   scroll: { flex: 1, backgroundColor: '#0A0A0A' },
-  container: { paddingHorizontal: 20, paddingTop: 60, paddingBottom: 48, gap: 20 },
+  container: { paddingHorizontal: 20, paddingBottom: 48, gap: 20 },
 
   // Header
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   avatarRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   avatar: {
     width: 42, height: 42, borderRadius: 21,
-    backgroundColor: '#1B3A1B', borderWidth: 1.5, borderColor: '#4CAF50',
+    backgroundColor: '#1B3A1B',
     alignItems: 'center', justifyContent: 'center', overflow: 'hidden',
   },
   avatarImage: { width: 42, height: 42, borderRadius: 21 },
@@ -395,10 +499,10 @@ const styles = StyleSheet.create({
   badgePro: {
     flexDirection: 'row', alignItems: 'center', gap: 4,
     paddingHorizontal: 12, paddingVertical: 5, borderRadius: 12,
-    borderWidth: 1, borderColor: 'rgba(76,175,80,0.35)',
+    borderWidth: 1, borderColor: 'rgba(255,215,0,0.5)',
   },
-  badgeProIcon: { color: 'rgba(255,255,255,0.7)', fontSize: 9 },
-  badgeProText: { color: '#fff', fontSize: 12, fontWeight: '700', letterSpacing: 0.5 },
+  badgeProIcon: { color: 'rgba(0,0,0,0.6)', fontSize: 9 },
+  badgeProText: { color: '#1A1000', fontSize: 12, fontWeight: '800', letterSpacing: 0.5 },
 
   // Hero
   heroWrapper: {
@@ -467,9 +571,8 @@ const styles = StyleSheet.create({
 
   // Metrics
   metricsRow: {
-    flexDirection: 'row', backgroundColor: '#111',
-    borderRadius: 18, borderWidth: 1, borderColor: '#1E1E1E',
-    paddingVertical: 16,
+    flexDirection: 'row',
+    paddingVertical: 4,
   },
   metricBlock: { flex: 1, alignItems: 'center', gap: 4 },
   metricDivider: { width: 1, backgroundColor: '#1E1E1E' },
@@ -488,7 +591,7 @@ const styles = StyleSheet.create({
   planBody: { flexDirection: 'row', alignItems: 'center', gap: 16 },
   planInfo: { flex: 1, gap: 6 },
   planFocus: { color: '#fff', fontSize: 20, fontWeight: '800' },
-  planMeta: { color: '#555', fontSize: 13 },
+  planMeta: { color: '#555', fontSize: 12 },
   planDoneBadge: {
     alignSelf: 'flex-start',
     backgroundColor: '#1B3A1B', borderRadius: 8,
@@ -502,5 +605,85 @@ const styles = StyleSheet.create({
     color: '#fff', fontSize: 12, fontWeight: '800',
   },
 
+  exercisePreview: {
+    borderTopWidth: 1,
+    borderTopColor: '#1A1A1A',
+    paddingTop: 12,
+    gap: 8,
+  },
+  exerciseRow: { flexDirection: 'row', alignItems: 'center' },
+  exerciseName: { flex: 1, color: '#666', fontSize: 13 },
+  exerciseSets: { color: '#444', fontSize: 12 },
+  exerciseMore: { color: '#333', fontSize: 12, marginTop: 2 },
+
+  shareWorkoutBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    borderTopWidth: 1,
+    borderTopColor: '#1A1A1A',
+    paddingTop: 12,
+  },
+  shareWorkoutText: { color: '#4CAF50', fontSize: 13, fontWeight: '600' },
+
   restText: { color: '#555', fontSize: 14, lineHeight: 22 },
+})
+
+const qStyles = StyleSheet.create({
+  card: {
+    borderRadius: 18,
+    overflow: 'hidden',
+    height: 220,
+  },
+  image: {
+    borderRadius: 18,
+  },
+  overlay: {
+    flex: 1,
+    justifyContent: 'flex-end',
+    padding: 20,
+    gap: 8,
+  },
+  quoteChar: {
+    color: 'rgba(255,255,255,0.25)',
+    fontSize: 44,
+    fontWeight: '900',
+    lineHeight: 36,
+    marginBottom: -4,
+  },
+  quoteText: {
+    color: '#fff',
+    fontSize: 15,
+    lineHeight: 23,
+    fontStyle: 'italic',
+    fontWeight: '500',
+  },
+  footer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: 6,
+  },
+  label: {
+    color: 'rgba(255,255,255,0.35)',
+    fontSize: 10,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: 1.2,
+  },
+  shareBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 8,
+    backgroundColor: 'rgba(255,255,255,0.1)',
+  },
+  shareBtnText: {
+    color: '#aaa',
+    fontSize: 11,
+    fontWeight: '600',
+  },
 })

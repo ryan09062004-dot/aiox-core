@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { View, Text, StyleSheet, TouchableOpacity, Switch, ScrollView } from 'react-native'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import { router } from 'expo-router'
 import { Ionicons } from '@expo/vector-icons'
@@ -16,6 +17,7 @@ const TIPS: { icon: string; text: string }[] = [
 export const PHOTO_TIP_STORAGE_KEY = 'hidePhotoTip'
 
 export default function PhotoTipScreen() {
+  const insets = useSafeAreaInsets()
   const [dontShow, setDontShow] = useState(false)
 
   const handleStart = async () => {
@@ -25,7 +27,7 @@ export default function PhotoTipScreen() {
 
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
+      <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
         <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
           <Ionicons name="chevron-back" size={22} color="#fff" />
         </TouchableOpacity>
@@ -78,7 +80,7 @@ export default function PhotoTipScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#0A0A0A' },
 
-  header: { paddingTop: 56, paddingHorizontal: 16, paddingBottom: 8 },
+  header: { paddingHorizontal: 16, paddingBottom: 8 },
   backBtn: {
     width: 38, height: 38,
     backgroundColor: 'rgba(255,255,255,0.1)', borderRadius: 19,

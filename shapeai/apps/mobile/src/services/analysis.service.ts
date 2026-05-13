@@ -135,9 +135,10 @@ export async function getAnalysisStatus(analysisId: string): Promise<AnalysisSta
 
 export async function pollAnalysis(
   analysisId: string,
-  options = { intervalMs: 2000, maxAttempts: 120 }
+  options = { intervalMs: 2000, maxAttempts: 120, maxConsecutiveErrors: 3 }
 ): Promise<AnalysisStatusResponse> {
   let attempts = 0
+  let consecutiveErrors = 0
 
   return new Promise((resolve, reject) => {
     const interval = setInterval(async () => {
@@ -145,6 +146,7 @@ export async function pollAnalysis(
 
       try {
         const result = await getAnalysisStatus(analysisId)
+        consecutiveErrors = 0
 
         if (result.status === 'completed' || result.status === 'failed') {
           clearInterval(interval)
@@ -157,8 +159,16 @@ export async function pollAnalysis(
           reject(new Error('Tempo limite de análise atingido (4 minutos)'))
         }
       } catch (err) {
-        clearInterval(interval)
-        reject(err)
+        consecutiveErrors++
+        // Erros transitórios (rede, 500) têm tolerância de até 3 falhas consecutivas
+        // Erros permanentes (401, 403) rejeitam imediatamente
+        const message = err instanceof Error ? err.message : ''
+        const isPermanent = message.includes('401') || message.includes('403')
+
+        if (isPermanent || consecutiveErrors >= options.maxConsecutiveErrors) {
+          clearInterval(interval)
+          reject(err)
+        }
       }
     }, options.intervalMs)
   })

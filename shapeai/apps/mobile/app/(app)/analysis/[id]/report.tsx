@@ -8,7 +8,12 @@ import {
   ActivityIndicator,
   Dimensions,
   Image,
+  Modal,
+  Alert,
 } from 'react-native'
+import * as FileSystem from 'expo-file-system'
+import * as MediaLibrary from 'expo-media-library'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useLocalSearchParams, router } from 'expo-router'
 import Svg, { Circle, Text as SvgText } from 'react-native-svg'
 import { getAnalysisResult, AnalysisResult, BodyComposition, MuscleScores } from '../../../../src/services/analysis.service'
@@ -275,10 +280,56 @@ function MusclesTab({ muscle_scores }: { muscle_scores: MuscleScores }) {
   )
 }
 
+function ImageViewerModal({ visible, imageUrl, onClose }: { visible: boolean; imageUrl: string; onClose: () => void }) {
+  const [downloading, setDownloading] = useState(false)
+
+  async function handleDownload() {
+    setDownloading(true)
+    try {
+      const { status } = await MediaLibrary.requestPermissionsAsync()
+      if (status !== 'granted') {
+        Alert.alert('Permissão necessária', 'Permita o acesso à galeria para salvar a imagem.')
+        return
+      }
+      const fileUri = FileSystem.cacheDirectory + `shape-futuro-${Date.now()}.jpg`
+      const { uri } = await FileSystem.downloadAsync(imageUrl, fileUri)
+      await MediaLibrary.saveToLibraryAsync(uri)
+      Alert.alert('Salvo!', 'Imagem salva na galeria com sucesso.')
+    } catch {
+      Alert.alert('Erro', 'Não foi possível salvar a imagem.')
+    } finally {
+      setDownloading(false)
+    }
+  }
+
+  return (
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose} statusBarTranslucent>
+      <View style={iv.container}>
+        <TouchableOpacity style={iv.closeBtn} onPress={onClose}>
+          <Text style={iv.closeBtnText}>✕</Text>
+        </TouchableOpacity>
+        <Image source={{ uri: imageUrl }} style={iv.image} resizeMode="contain" />
+        <TouchableOpacity style={iv.downloadBtn} onPress={handleDownload} disabled={downloading}>
+          {downloading
+            ? <ActivityIndicator color="#fff" size="small" />
+            : <Text style={iv.downloadBtnText}>↓  Salvar na galeria</Text>
+          }
+        </TouchableOpacity>
+      </View>
+    </Modal>
+  )
+}
+
 function FutureEvolutionCard({ imageUrl, isPro }: { imageUrl: string; isPro: boolean }) {
+  const [modalVisible, setModalVisible] = useState(false)
+
   return (
     <View style={fes.card}>
-      <View style={fes.imageWrapper}>
+      <TouchableOpacity
+        style={fes.imageWrapper}
+        onPress={() => isPro && setModalVisible(true)}
+        activeOpacity={isPro ? 0.85 : 1}
+      >
         <Image
           source={{ uri: imageUrl }}
           style={fes.image}
@@ -288,6 +339,11 @@ function FutureEvolutionCard({ imageUrl, isPro }: { imageUrl: string; isPro: boo
         <View style={fes.labelOverlay}>
           <Text style={fes.label}>SEU SHAPE DOS SONHOS</Text>
         </View>
+        {isPro && (
+          <View style={fes.expandBtn}>
+            <Text style={fes.expandBtnText}>⤢</Text>
+          </View>
+        )}
         {!isPro && (
           <View style={fes.lockOverlay}>
             <Text style={fes.lockIcon}>🔒</Text>
@@ -298,17 +354,25 @@ function FutureEvolutionCard({ imageUrl, isPro }: { imageUrl: string; isPro: boo
             </TouchableOpacity>
           </View>
         )}
-      </View>
+      </TouchableOpacity>
       {isPro && (
         <Text style={fes.disclaimer}>
           Visualização gerada por IA. Resultados reais dependem de consistência, alimentação e genética individual.
         </Text>
+      )}
+      {isPro && (
+        <ImageViewerModal
+          visible={modalVisible}
+          imageUrl={imageUrl}
+          onClose={() => setModalVisible(false)}
+        />
       )}
     </View>
   )
 }
 
 export default function ReportScreen() {
+  const insets = useSafeAreaInsets()
   const { id } = useLocalSearchParams<{ id: string }>()
   const [analysis, setAnalysis] = useState<AnalysisResult | null>(null)
   const [loading, setLoading] = useState(true)
@@ -350,12 +414,9 @@ export default function ReportScreen() {
 
   return (
     <View style={s.container}>
-      <View style={s.header}>
+      <View style={[s.header, { paddingTop: insets.top + 12 }]}>
         <TouchableOpacity onPress={() => router.back()}>
           <Text style={s.backBtn}>← Voltar</Text>
-        </TouchableOpacity>
-        <TouchableOpacity onPress={() => router.push('/(app)/history')}>
-          <Text style={s.historyBtn}>Avaliações</Text>
         </TouchableOpacity>
       </View>
 
@@ -422,11 +483,9 @@ const s = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 20,
-    paddingTop: 16,
     paddingBottom: 12,
   },
   backBtn: { color: '#4CAF50', fontSize: 16, fontWeight: '600' },
-  historyBtn: { color: '#555', fontSize: 14 },
 
   tabBar: {
     flexDirection: 'row',
@@ -434,8 +493,8 @@ const s = StyleSheet.create({
     borderBottomColor: '#1A1A1A',
     marginHorizontal: 20,
   },
-  tabItem: { flex: 1, alignItems: 'center', paddingBottom: 10 },
-  tabLabel: { color: '#444', fontSize: 13, fontWeight: '600' },
+  tabItem: { flex: 1, alignItems: 'center', paddingTop: 14, paddingBottom: 14 },
+  tabLabel: { color: '#444', fontSize: 15, fontWeight: '600' },
   tabLabelActive: { color: '#fff' },
   tabUnderline: { position: 'absolute', bottom: 0, height: 2, width: '60%', backgroundColor: '#4CAF50', borderRadius: 1 },
 
@@ -687,5 +746,71 @@ const fes = StyleSheet.create({
     lineHeight: 15,
     textAlign: 'center',
     padding: 12,
+  },
+  expandBtn: {
+    position: 'absolute',
+    top: 12,
+    right: 12,
+    backgroundColor: 'rgba(0,0,0,0.72)',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.15)',
+    width: 32,
+    height: 32,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  expandBtnText: {
+    color: '#fff',
+    fontSize: 26,
+    lineHeight: 32,
+    textAlign: 'center',
+    textAlignVertical: 'center',
+    includeFontPadding: false,
+  },
+})
+
+const iv = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.96)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  image: {
+    width: SCREEN_W,
+    height: SCREEN_W * (4 / 3),
+  },
+  closeBtn: {
+    position: 'absolute',
+    top: 52,
+    right: 20,
+    backgroundColor: 'rgba(255,255,255,0.12)',
+    borderRadius: 20,
+    width: 40,
+    height: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 10,
+  },
+  closeBtnText: {
+    color: '#fff',
+    fontSize: 18,
+    fontWeight: '600',
+  },
+  downloadBtn: {
+    position: 'absolute',
+    bottom: 52,
+    backgroundColor: '#4CAF50',
+    borderRadius: 14,
+    paddingHorizontal: 32,
+    paddingVertical: 14,
+    minWidth: 180,
+    alignItems: 'center',
+  },
+  downloadBtnText: {
+    color: '#fff',
+    fontSize: 15,
+    fontWeight: '700',
   },
 })

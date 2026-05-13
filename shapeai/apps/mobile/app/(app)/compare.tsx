@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Alert } from 'react-native'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { router, useLocalSearchParams } from 'expo-router'
 import { apiGet, apiPost } from '../../src/services/api.client'
 import { useSubscription } from '../../src/hooks/useSubscription'
@@ -33,6 +34,7 @@ function calcOverall(scores: Record<string, number>): number {
 }
 
 export default function CompareScreen() {
+  const insets = useSafeAreaInsets()
   const { id1, id2 } = useLocalSearchParams<{ id1: string; id2: string }>()
   const { subscription } = useSubscription()
   const isPro = subscription?.status === 'pro'
@@ -86,7 +88,7 @@ export default function CompareScreen() {
   const overall2 = calcOverall(scores2)
 
   return (
-    <ScrollView style={styles.scroll} contentContainerStyle={styles.container}>
+    <ScrollView style={styles.scroll} contentContainerStyle={[styles.container, { paddingTop: insets.top + 20 }]}>
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()} testID="btn-voltar">
           <Text style={styles.back}>← Voltar</Text>
@@ -171,7 +173,7 @@ export default function CompareScreen() {
 
 const styles = StyleSheet.create({
   scroll: { flex: 1, backgroundColor: '#0A0A0A' },
-  container: { padding: 24, paddingTop: 60, paddingBottom: 48 },
+  container: { padding: 24, paddingBottom: 48 },
   centered: { flex: 1, backgroundColor: '#0A0A0A', justifyContent: 'center', alignItems: 'center' },
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 },
   back: { color: '#4CAF50', fontSize: 16 },

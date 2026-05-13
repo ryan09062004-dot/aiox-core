@@ -1,6 +1,7 @@
 import { Tabs, Redirect } from 'expo-router'
 import { Ionicons } from '@expo/vector-icons'
 import { useAuthStore } from '../../src/stores/auth.store'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
 type IoniconsName = React.ComponentProps<typeof Ionicons>['name']
 
@@ -12,6 +13,7 @@ function tabIcon(active: IoniconsName, inactive: IoniconsName) {
 
 export default function AppLayout() {
   const { session, isGuest } = useAuthStore()
+  const insets = useSafeAreaInsets()
 
   if (!session && !isGuest) return <Redirect href="/(auth)/login" />
 
@@ -24,8 +26,8 @@ export default function AppLayout() {
           borderTopColor: '#1A1A1A',
           borderTopWidth: 1,
           paddingTop: 6,
-          paddingBottom: 8,
-          height: 62,
+          paddingBottom: Math.max(insets.bottom, 8),
+          height: 62 + insets.bottom,
         },
         tabBarActiveTintColor: '#4CAF50',
         tabBarInactiveTintColor: '#555',
@@ -46,7 +48,7 @@ export default function AppLayout() {
       />
       <Tabs.Screen
         name="coach"
-        options={{ title: 'Coach', tabBarIcon: tabIcon('fitness', 'fitness-outline') }}
+        options={{ title: 'Personal', tabBarIcon: tabIcon('chatbubbles', 'chatbubbles-outline') }}
       />
       <Tabs.Screen
         name="profile"
