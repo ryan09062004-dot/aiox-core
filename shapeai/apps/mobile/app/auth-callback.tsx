@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { View, ActivityIndicator } from 'react-native'
+import { View, ActivityIndicator, Alert } from 'react-native'
 import { useLocalSearchParams, router } from 'expo-router'
 import { supabase } from '../src/services/supabase.client'
 
@@ -8,10 +8,14 @@ export default function AuthCallback() {
 
   useEffect(() => {
     const code = params.code
+    Alert.alert('Debug OAuth', `code: ${code ?? 'AUSENTE'}\nparams: ${JSON.stringify(params)}`)
     if (code) {
       supabase.auth.exchangeCodeForSession(code)
         .then(() => router.replace('/(app)'))
-        .catch(() => router.replace('/(auth)/login'))
+        .catch((e) => {
+          Alert.alert('Debug Error', e.message)
+          router.replace('/(auth)/login')
+        })
     } else {
       router.replace('/(auth)/login')
     }
