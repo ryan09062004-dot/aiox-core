@@ -12,6 +12,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage'
 import { useLocalSearchParams, router } from 'expo-router'
 import {
   type WorkoutWeek,
+  type WorkoutSession,
   type PrimaryGoal,
   GOAL_LABEL,
 } from '@shapeai/shared'
@@ -23,8 +24,22 @@ function storageKey(analysisId: string) {
   return `workout_progress_${analysisId}`
 }
 
+function modeKey(analysisId: string) {
+  return `workout_mode_${analysisId}`
+}
+
 function sessionKey(weekNumber: number, day: string) {
   return `${weekNumber}_${day}`
+}
+
+function applyWorkoutMode(sessions: WorkoutSession[], mode: 'gym' | 'home'): WorkoutSession[] {
+  if (mode === 'gym') return sessions
+  return sessions.map((session) => ({
+    ...session,
+    exercises: session.exercises.map((ex) =>
+      ex.home_alternative ? { ...ex.home_alternative } : ex
+    ),
+  }))
 }
 
 export default function WorkoutScreen() {
@@ -36,6 +51,19 @@ export default function WorkoutScreen() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [completed, setCompleted] = useState<Set<string>>(new Set())
+  const [workoutMode, setWorkoutMode] = useState<'gym' | 'home'>('gym')
+
+  useEffect(() => {
+    if (!id) return
+    AsyncStorage.getItem(modeKey(id)).then((val) => {
+      if (val === 'home') setWorkoutMode('home')
+    })
+  }, [id])
+
+  const changeMode = useCallback(async (mode: 'gym' | 'home') => {
+    setWorkoutMode(mode)
+    if (id) await AsyncStorage.setItem(modeKey(id), mode)
+  }, [id])
 
   useEffect(() => {
     if (!id) return
@@ -81,6 +109,7 @@ export default function WorkoutScreen() {
   const goalLabel = goal ? GOAL_LABEL[goal] : '—'
   const currentWeek = weeks[selectedWeek]
   const sessionsPerWeek = weeks[0]?.sessions.length ?? 0
+  const displaySessions = applyWorkoutMode(currentWeek?.sessions ?? [], workoutMode)
 
   const totalSessions = weeks.reduce((sum, w) => sum + w.sessions.length, 0)
   const completionPct = totalSessions > 0 ? Math.round((completed.size / totalSessions) * 100) : 0
@@ -145,8 +174,29 @@ export default function WorkoutScreen() {
         ))}
       </ScrollView>
 
+      <View style={styles.modeToggleContainer}>
+        <TouchableOpacity
+          style={[styles.modeBtn, workoutMode === 'gym' && styles.modeBtnActive]}
+          onPress={() => changeMode('gym')}
+          activeOpacity={0.8}
+        >
+          <Text style={[styles.modeBtnText, workoutMode === 'gym' && styles.modeBtnTextActive]}>
+            Academia
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.modeBtn, workoutMode === 'home' && styles.modeBtnActive]}
+          onPress={() => changeMode('home')}
+          activeOpacity={0.8}
+        >
+          <Text style={[styles.modeBtnText, workoutMode === 'home' && styles.modeBtnTextActive]}>
+            Casa
+          </Text>
+        </TouchableOpacity>
+      </View>
+
       <ScrollView style={styles.daysScroll} contentContainerStyle={styles.daysContent}>
-        {currentWeek?.sessions.map((session, index) => (
+        {displaySessions.map((session, index) => (
           <WorkoutDayCard
             key={index}
             session={session}
@@ -204,6 +254,25 @@ const styles = StyleSheet.create({
   tabActive: { backgroundColor: '#4CAF50', borderColor: '#4CAF50' },
   tabText: { color: '#888', fontSize: 14, fontWeight: '600' },
   tabTextActive: { color: '#fff' },
+
+  modeToggleContainer: {
+    flexDirection: 'row',
+    backgroundColor: '#1a1a1a',
+    borderRadius: 10,
+    padding: 4,
+    marginHorizontal: 16,
+    marginTop: 8,
+    marginBottom: 4,
+  },
+  modeBtn: {
+    flex: 1,
+    paddingVertical: 9,
+    alignItems: 'center',
+    borderRadius: 7,
+  },
+  modeBtnActive: { backgroundColor: '#4CAF50' },
+  modeBtnText: { color: '#666', fontWeight: '600', fontSize: 14 },
+  modeBtnTextActive: { color: '#fff' },
 
   daysScroll: { flex: 1 },
   daysContent: { padding: 20, paddingBottom: 40 },

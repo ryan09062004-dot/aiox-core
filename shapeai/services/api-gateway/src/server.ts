@@ -10,6 +10,7 @@ import rateLimit from '@fastify/rate-limit'
 import cron from 'node-cron'
 import { analysesRoutes } from './routes/analyses'
 import { chatRoutes } from './routes/chat'
+import { mealPlansRoutes } from './routes/meal-plans'
 import { profileRoutes } from './routes/profile'
 import { subscriptionRoutes } from './routes/subscription'
 import { pushTokensRoutes } from './routes/push-tokens'
@@ -58,6 +59,7 @@ async function bootstrap() {
   await app.register(profileRoutes)
   await app.register(analysesRoutes)
   await app.register(chatRoutes)
+  await app.register(mealPlansRoutes)
   await app.register(subscriptionRoutes)
   await app.register(pushTokensRoutes)
   await app.register(inviteRoutes)

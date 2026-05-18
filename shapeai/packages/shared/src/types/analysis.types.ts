@@ -47,6 +47,15 @@ export interface Report {
   generated_at: string
 }
 
+export interface HomeExercise {
+  name: string
+  muscle_group: string
+  sets: number
+  reps: string
+  rest_seconds: number
+  note: string | null
+}
+
 export interface Exercise {
   name: string
   muscle_group: string
@@ -54,6 +63,7 @@ export interface Exercise {
   reps: string
   rest_seconds: number
   note: string | null
+  home_alternative?: HomeExercise | null
 }
 
 export interface WorkoutSession {

@@ -8,6 +8,7 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
 from app.pipeline.future_self_generator import generate_future_self
+from app.pipeline.meal_plan_generator import generate_meal_plan
 from app.pipeline.plan_generator import generate_workout_plan
 from app.pipeline.report_generator import generate_report
 from app.pipeline.vision_analyzer import analyze_body_vision
@@ -118,4 +119,28 @@ async def analyze(request: AnalyzeRequest):
             mark_failed(analysis_id)
         except Exception as db_err:
             logger.error("[ai-engine] Failed to mark %s as failed: %s", analysis_id, db_err)
+        raise HTTPException(status_code=500, detail=str(exc))
+
+
+class MealPlanRequest(BaseModel):
+    goal: str
+    height_cm: float
+    weight_kg: float
+    sex: str
+
+
+@router.post("/meal-plan")
+async def meal_plan(request: MealPlanRequest):
+    profile = {
+        "goal": request.goal,
+        "height_cm": request.height_cm,
+        "weight_kg": request.weight_kg,
+        "sex": request.sex,
+    }
+    loop = asyncio.get_event_loop()
+    try:
+        meals = await loop.run_in_executor(None, partial(generate_meal_plan, profile))
+        return {"meals": meals}
+    except Exception as exc:
+        logger.error("[meal-plan] Generation failed: %s", exc)
         raise HTTPException(status_code=500, detail=str(exc))

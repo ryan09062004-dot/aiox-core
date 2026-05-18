@@ -482,6 +482,22 @@ export default function HomeScreen() {
         </View>
       )}
 
+      {/* ── Plano Alimentar ── */}
+      <TouchableOpacity
+        style={styles.mealPlanCard}
+        onPress={() => router.push('/(app)/meal-plan')}
+        activeOpacity={0.85}
+      >
+        <View style={styles.mealPlanBody}>
+          <Ionicons name="restaurant-outline" size={24} color="#4CAF50" />
+          <View style={styles.mealPlanText}>
+            <Text style={styles.mealPlanTitle}>Plano Alimentar</Text>
+            <Text style={styles.mealPlanSub}>5 refeições personalizadas por IA</Text>
+          </View>
+          <Ionicons name="chevron-forward" size={18} color="#444" />
+        </View>
+      </TouchableOpacity>
+
       <DailyQuoteCard />
     </ScrollView>
 
@@ -753,6 +769,16 @@ const styles = StyleSheet.create({
   shareWorkoutText: { color: '#aaa', fontSize: 13, fontWeight: '600' },
 
   restText: { color: '#555', fontSize: 14, lineHeight: 22 },
+
+  mealPlanCard: {
+    backgroundColor: '#111', borderRadius: 18,
+    padding: 16,
+    borderWidth: 1, borderColor: '#1E1E1E',
+  },
+  mealPlanBody: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  mealPlanText: { flex: 1 },
+  mealPlanTitle: { color: '#fff', fontSize: 16, fontWeight: '700' },
+  mealPlanSub: { color: '#555', fontSize: 12, marginTop: 2 },
 })
 
 const qStyles = StyleSheet.create({
