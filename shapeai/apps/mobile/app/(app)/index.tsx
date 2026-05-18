@@ -486,7 +486,7 @@ export default function HomeScreen() {
     </ScrollView>
 
       {/* ── Glass Header ── */}
-      <BlurView intensity={85} tint="dark" style={[styles.glassHeader, { paddingTop: insets.top + 14 }]} onLayout={(e) => setHeaderHeight(e.nativeEvent.layout.height)}>
+      <BlurView intensity={85} tint="dark" style={[styles.glassHeader, { paddingTop: insets.top + 6 }]} onLayout={(e) => setHeaderHeight(e.nativeEvent.layout.height)}>
         <View style={styles.header}>
           <View style={styles.avatarRow}>
             <LinearGradient
@@ -566,7 +566,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 0, left: 0, right: 0,
     paddingHorizontal: 20,
-    paddingBottom: 14,
+    paddingBottom: 8,
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: 'rgba(255,255,255,0.08)',
   },
