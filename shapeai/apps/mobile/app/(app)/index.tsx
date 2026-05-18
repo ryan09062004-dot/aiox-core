@@ -504,7 +504,6 @@ export default function HomeScreen() {
               </TouchableOpacity>
             </LinearGradient>
             <View>
-              <Text style={styles.greetingTime}>{getGreeting()},</Text>
               {editingName ? (
                 <TextInput
                   style={styles.nameInput}
