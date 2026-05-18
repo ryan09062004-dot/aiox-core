@@ -276,6 +276,31 @@ def _describe_body_goal(goal: str, fat_pct: float, sex: str) -> str:  # unused �
     return ""  # replaced by _build_prompt
 
 
+def _build_prompt_v2(sex: str) -> str:
+    """
+    Alternative prompt: professional fitness demonstration aesthetic.
+    Less body-editing-focused, more aspirational/professional look.
+    """
+    if sex.lower() in ("m", "male"):
+        attire = "appropriate athletic attire (shirtless for men)"
+    else:
+        attire = "appropriate athletic attire (sports bra for women)"
+
+    return (
+        f"Transform this person's photo to show them as a professional fitness athlete "
+        f"in {attire} showcasing peak muscle definition. "
+        f"The result should look like a professional fitness demonstration photo — "
+        f"well-lit gym setting, the athlete in confident poses that highlight "
+        f"chest, shoulder, back, and arm musculature. "
+        f"The focus is entirely on muscle definition, fitness achievements, and proper athletic form. "
+        f"Maintain a professional, sports-focused aesthetic similar to bodybuilding competitions "
+        f"or fitness tutorials. "
+        f"Keep the person's identity, face (soft blur), skin tone, and background consistent with the original. "
+        f"Only transform the body composition — eliminate body fat, develop all muscle groups to a "
+        f"high level of definition and size. The result must look photorealistic and professional."
+    )
+
+
 def _build_prompt(scores: dict) -> str:
     fat_pct = float(scores.get("body_fat_estimate_pct", 20.0))
 
@@ -343,6 +368,7 @@ def generate_future_self(
     scores: dict,
     profile: dict,
     period_days: int = 90,
+    prompt_override: str | None = None,
 ) -> bytes | None:
     """Generate future-self image via Gemini. Returns JPEG bytes or None on failure."""
     print(f"[future_self] called — img={len(front_bytes) if front_bytes else 0}B key_set={bool(GEMINI_API_KEY)}", flush=True)
@@ -357,7 +383,8 @@ def generate_future_self(
 
         client = google_genai.Client(api_key=GEMINI_API_KEY)
 
-        prompt = _build_prompt(scores)
+        sex = profile.get("sex", "M")
+        prompt = prompt_override if prompt_override is not None else _build_prompt_v2(sex)
         print(f"[future_self] resizing image ({len(front_bytes)}B)...", flush=True)
         resized = _resize(front_bytes)
         print(f"[future_self] resized to {len(resized)}B, calling Gemini...", flush=True)
