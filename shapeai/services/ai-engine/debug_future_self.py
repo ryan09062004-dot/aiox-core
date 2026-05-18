@@ -9,11 +9,14 @@ EXEMPLOS:
     python debug_future_self.py foto.jpg
     python debug_future_self.py foto.jpg --goal fat_loss --fat 28
     python debug_future_self.py foto.jpg --goal hypertrophy --fat 22 --sex F
+    python debug_future_self.py foto.jpg --sex M --prompt v2
+    python debug_future_self.py foto.jpg --sex F --prompt v2
 
 OPCOES:
     --goal    hypertrophy | fat_loss | conditioning | maintenance  (default: hypertrophy)
     --fat     % de gordura corporal estimada  (default: 22)
     --sex     M | F  (default: M)
+    --prompt  v1 | v2  (default: v1 — v2 usa prompt fitness professional)
     --out     caminho do arquivo de saida  (default: debug_future_self_result.jpg)
 """
 import sys
@@ -31,6 +34,7 @@ parser.add_argument("foto", nargs="?", default=None, help="Caminho da foto JPEG/
 parser.add_argument("--goal", default="hypertrophy", choices=["hypertrophy", "fat_loss", "conditioning", "maintenance"])
 parser.add_argument("--fat", type=float, default=22.0, help="gordura corporal em pct (ex: 18, 28, 35)")
 parser.add_argument("--sex", default="M", choices=["M", "F"])
+parser.add_argument("--prompt", default="v1", choices=["v1", "v2"], help="Versao do prompt (v2=fitness professional)")
 parser.add_argument("--out", default="debug_future_self_result.jpg", help="Arquivo de saida")
 args = parser.parse_args()
 
@@ -74,26 +78,34 @@ print(f"\nConfiguracao:")
 print(f"  Goal:    {args.goal}")
 print(f"  Gordura: {args.fat}%")
 print(f"  Sexo:    {args.sex}")
+print(f"  Prompt:  {args.prompt}")
 print(f"  Saida:   {args.out}")
 print()
 
 # --- Executa ---
 print("Importando generate_future_self...")
-from app.pipeline.future_self_generator import generate_future_self, _build_prompt
+from app.pipeline.future_self_generator import generate_future_self, _build_prompt, _build_prompt_v2
 print("Importado OK\n")
 
-# Mostra o prompt que sera enviado para debug
-prompt_preview = _build_prompt(scores)
+# Seleciona e mostra o prompt
+if args.prompt == "v2":
+    sex_full = "male" if args.sex == "M" else "female"
+    prompt_preview = _build_prompt_v2(sex_full)
+else:
+    prompt_preview = _build_prompt(scores)
+
 print("=" * 60)
-print("PROMPT QUE SERA ENVIADO AO GEMINI:")
+print(f"PROMPT [{args.prompt.upper()}] QUE SERA ENVIADO AO GEMINI:")
 print("=" * 60)
 print(prompt_preview)
 print("=" * 60)
 print()
 
+prompt_override = prompt_preview if args.prompt == "v2" else None
+
 start = time.time()
 print("Chamando Gemini... (pode levar 20-60s)")
-result = generate_future_self(photo_bytes, scores, profile)
+result = generate_future_self(photo_bytes, scores, profile, prompt_override=prompt_override)
 elapsed = time.time() - start
 
 print()
