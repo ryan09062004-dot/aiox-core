@@ -482,22 +482,6 @@ export default function HomeScreen() {
         </View>
       )}
 
-      {/* ── Plano Alimentar ── */}
-      <TouchableOpacity
-        style={styles.mealPlanCard}
-        onPress={() => router.push('/(app)/meal-plan')}
-        activeOpacity={0.85}
-      >
-        <View style={styles.mealPlanBody}>
-          <Ionicons name="restaurant-outline" size={24} color="#4CAF50" />
-          <View style={styles.mealPlanText}>
-            <Text style={styles.mealPlanTitle}>Plano Alimentar</Text>
-            <Text style={styles.mealPlanSub}>5 refeições personalizadas por IA</Text>
-          </View>
-          <Ionicons name="chevron-forward" size={18} color="#444" />
-        </View>
-      </TouchableOpacity>
-
       <DailyQuoteCard />
     </ScrollView>
 
@@ -540,26 +524,31 @@ export default function HomeScreen() {
               <Text style={styles.tagline}>Foque. Treine. Evolua.</Text>
             </View>
           </View>
-          {isPro ? (
-            <LinearGradient
-              colors={['#00FF85', '#FFE500']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 0 }}
-              style={styles.badgeProGradient}
-            >
-              <View style={styles.badgePro}>
-                <MaskedView maskElement={<View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}><MaterialCommunityIcons name="crown" size={11} color="#fff" /><Text style={styles.badgeProText}>PRO</Text></View>}>
-                  <LinearGradient colors={['#00FF85', '#FFE500']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}>
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}><MaterialCommunityIcons name="crown" size={11} color="#fff" style={{ opacity: 0 }} /><Text style={[styles.badgeProText, { opacity: 0 }]}>PRO</Text></View>
-                  </LinearGradient>
-                </MaskedView>
+          <View style={styles.headerRight}>
+            {isPro ? (
+              <LinearGradient
+                colors={['#00FF85', '#FFE500']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={styles.badgeProGradient}
+              >
+                <View style={styles.badgePro}>
+                  <MaskedView maskElement={<View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}><MaterialCommunityIcons name="crown" size={11} color="#fff" /><Text style={styles.badgeProText}>PRO</Text></View>}>
+                    <LinearGradient colors={['#00FF85', '#FFE500']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}><MaterialCommunityIcons name="crown" size={11} color="#fff" style={{ opacity: 0 }} /><Text style={[styles.badgeProText, { opacity: 0 }]}>PRO</Text></View>
+                    </LinearGradient>
+                  </MaskedView>
+                </View>
+              </LinearGradient>
+            ) : (
+              <View style={styles.badgeFree}>
+                <Text style={styles.badgeFreeText}>Free</Text>
               </View>
-            </LinearGradient>
-          ) : (
-            <View style={styles.badgeFree}>
-              <Text style={styles.badgeFreeText}>Free</Text>
-            </View>
-          )}
+            )}
+            <TouchableOpacity onPress={() => router.push('/(app)/profile')} activeOpacity={0.7} style={styles.gearBtn}>
+              <Ionicons name="settings-outline" size={22} color="#555" />
+            </TouchableOpacity>
+          </View>
         </View>
       </BlurView>
     </View>
@@ -770,15 +759,8 @@ const styles = StyleSheet.create({
 
   restText: { color: '#555', fontSize: 14, lineHeight: 22 },
 
-  mealPlanCard: {
-    backgroundColor: '#111', borderRadius: 18,
-    padding: 16,
-    borderWidth: 1, borderColor: '#1E1E1E',
-  },
-  mealPlanBody: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  mealPlanText: { flex: 1 },
-  mealPlanTitle: { color: '#fff', fontSize: 16, fontWeight: '700' },
-  mealPlanSub: { color: '#555', fontSize: 12, marginTop: 2 },
+  headerRight: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  gearBtn: { padding: 4 },
 })
 
 const qStyles = StyleSheet.create({

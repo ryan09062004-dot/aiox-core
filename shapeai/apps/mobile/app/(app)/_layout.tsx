@@ -47,13 +47,14 @@ export default function AppLayout() {
         options={{ title: 'Treino', tabBarIcon: tabIcon('barbell', 'barbell-outline') }}
       />
       <Tabs.Screen
+        name="meal-plan"
+        options={{ title: 'Nutrição', tabBarIcon: tabIcon('restaurant', 'restaurant-outline') }}
+      />
+      <Tabs.Screen
         name="coach"
         options={{ title: 'Personal', tabBarIcon: tabIcon('chatbubbles', 'chatbubbles-outline') }}
       />
-      <Tabs.Screen
-        name="profile"
-        options={{ title: 'Perfil', tabBarIcon: tabIcon('person', 'person-outline') }}
-      />
+      <Tabs.Screen name="profile"    options={{ href: null }} />
       <Tabs.Screen name="camera"    options={{ href: null }} />
       <Tabs.Screen name="photo-tip" options={{ href: null }} />
       <Tabs.Screen name="analysis"  options={{ href: null }} />

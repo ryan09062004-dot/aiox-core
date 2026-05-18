@@ -5,8 +5,11 @@ import {
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { router } from 'expo-router'
+import AsyncStorage from '@react-native-async-storage/async-storage'
+import { Ionicons } from '@expo/vector-icons'
 import type { MealPlan, MealItem } from '@shapeai/shared'
 import { getLatestMealPlan, generateMealPlan } from '../../src/services/meal-plan.service'
+import { PHOTO_TIP_STORAGE_KEY } from './photo-tip'
 
 const MEAL_ICONS: Record<string, string> = {
   'Café da Manhã': '☀️',
@@ -113,18 +116,25 @@ export default function MealPlanScreen() {
   const totalCarbs = plan?.meals.reduce((s, m) => s + m.carbs_g, 0) ?? 0
   const totalFat = plan?.meals.reduce((s, m) => s + m.fats_g, 0) ?? 0
 
+  async function goToAnalysis() {
+    const skip = await AsyncStorage.getItem(PHOTO_TIP_STORAGE_KEY)
+    router.push((skip === 'true' ? '/(app)/camera' : '/(app)/photo-tip') as never)
+  }
+
   return (
     <View style={styles.container}>
       <View style={[styles.header, { paddingTop: insets.top + 16 }]}>
-        <TouchableOpacity onPress={() => router.back()}>
-          <Text style={styles.backBtn}>← Voltar</Text>
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Plano Alimentar</Text>
-        <TouchableOpacity onPress={handleGenerate} disabled={generating || loading}>
-          <Text style={[styles.regenBtn, (generating || loading) && styles.regenBtnDisabled]}>
-            {generating ? '...' : 'Regerar'}
-          </Text>
-        </TouchableOpacity>
+        <Text style={styles.headerTitle}>Nutrição</Text>
+        {plan && (
+          <TouchableOpacity onPress={handleGenerate} disabled={generating || loading}>
+            <View style={styles.regenRow}>
+              <Ionicons name="refresh-outline" size={14} color={generating || loading ? '#333' : '#4CAF50'} />
+              <Text style={[styles.regenBtn, (generating || loading) && styles.regenBtnDisabled]}>
+                {generating ? 'Gerando...' : 'Atualizar'}
+              </Text>
+            </View>
+          </TouchableOpacity>
+        )}
       </View>
 
       {loading ? (
@@ -170,9 +180,10 @@ export default function MealPlanScreen() {
             <Text style={styles.errorText}>{error}</Text>
           ) : (
             <>
-              <Text style={styles.emptyTitle}>Nenhum plano ainda</Text>
+              <Ionicons name="restaurant-outline" size={56} color="#2a2a2a" />
+              <Text style={styles.emptyTitle}>Sem plano alimentar</Text>
               <Text style={styles.emptyText}>
-                Gere seu plano alimentar personalizado com base no seu objetivo e perfil.
+                Gere um plano com 5 refeições diárias personalizadas por IA para o seu objetivo.
               </Text>
               <TouchableOpacity
                 style={styles.generateBtn}
@@ -183,8 +194,16 @@ export default function MealPlanScreen() {
                 {generating ? (
                   <ActivityIndicator size="small" color="#0A0A0A" />
                 ) : (
-                  <Text style={styles.generateBtnText}>Gerar meu plano alimentar</Text>
+                  <Text style={styles.generateBtnText}>Gerar plano alimentar</Text>
                 )}
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.analysisBtn}
+                onPress={goToAnalysis}
+                activeOpacity={0.8}
+              >
+                <Ionicons name="scan-outline" size={16} color="#4CAF50" />
+                <Text style={styles.analysisBtnText}>Fazer uma avaliação primeiro</Text>
               </TouchableOpacity>
             </>
           )}
@@ -208,8 +227,8 @@ const styles = StyleSheet.create({
     borderBottomColor: '#1A1A1A',
     backgroundColor: '#111',
   },
-  backBtn: { color: '#4CAF50', fontSize: 16, fontWeight: '600' },
-  headerTitle: { color: '#fff', fontSize: 18, fontWeight: '700' },
+  headerTitle: { color: '#fff', fontSize: 22, fontWeight: '800' },
+  regenRow: { flexDirection: 'row', alignItems: 'center', gap: 5 },
   regenBtn: { color: '#4CAF50', fontSize: 14, fontWeight: '600' },
   regenBtnDisabled: { color: '#333' },
 
@@ -272,5 +291,18 @@ const styles = StyleSheet.create({
     minWidth: 220,
   },
   generateBtnText: { color: '#0A0A0A', fontSize: 15, fontWeight: '700' },
+  analysisBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: '#2a2a2a',
+    minWidth: 220,
+    justifyContent: 'center',
+  },
+  analysisBtnText: { color: '#4CAF50', fontSize: 14, fontWeight: '600' },
   errorText: { color: '#EF5350', fontSize: 14, textAlign: 'center' },
 })
