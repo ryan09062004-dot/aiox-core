@@ -104,11 +104,10 @@ export function AnalysisHistoryItem({ item, isLatest, index, total, onPress, onW
         testID={`history-item-${item.id}`}
       >
         <View style={styles.featuredHeader}>
-          <View style={styles.featuredBadge}>
-            <Text style={styles.evalNumberFeatured}>#{evalNumber}</Text>
-            <Text style={styles.featuredBadgeLabel}> Mais recente</Text>
-          </View>
           <Text style={styles.featuredDate}>{formatDate(item.created_at)}</Text>
+          <View style={styles.featuredBadge}>
+            <Text style={styles.featuredBadgeLabel}>Mais recente</Text>
+          </View>
         </View>
 
         <View style={styles.featuredBody}>
