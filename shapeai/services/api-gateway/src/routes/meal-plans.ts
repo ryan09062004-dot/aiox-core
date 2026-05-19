@@ -3,23 +3,6 @@ import axios from 'axios'
 import { pool } from '../db/client'
 import { requireAuth } from '../middleware/auth'
 
-async function checkMealPlanFreemium(userId: string): Promise<void> {
-  const { rows } = await pool.query<{ count: string; subscription_status: string }>(
-    `SELECT
-       (SELECT COUNT(*) FROM meal_plans WHERE user_id = $1) AS count,
-       subscription_status
-     FROM users WHERE id = $1`,
-    [userId]
-  )
-  if (!rows[0]) throw new Error('User not found')
-  const { count, subscription_status } = rows[0]
-  if (parseInt(count) >= 1 && subscription_status === 'free') {
-    const err = new Error('SUBSCRIPTION_REQUIRED') as Error & { statusCode: number }
-    err.statusCode = 402
-    throw err
-  }
-}
-
 export async function mealPlansRoutes(app: FastifyInstance) {
   app.get('/meal-plans/latest', { preHandler: requireAuth }, async (request, reply) => {
     const userId = request.authUser.id
@@ -33,16 +16,6 @@ export async function mealPlansRoutes(app: FastifyInstance) {
 
   app.post('/meal-plans/generate', { preHandler: requireAuth }, async (request, reply) => {
     const userId = request.authUser.id
-
-    try {
-      await checkMealPlanFreemium(userId)
-    } catch (err: unknown) {
-      const e = err as Error & { statusCode?: number }
-      if (e.message === 'SUBSCRIPTION_REQUIRED') {
-        return reply.status(402).send({ error: 'SUBSCRIPTION_REQUIRED' })
-      }
-      throw err
-    }
 
     const { rows: profileRows } = await pool.query(
       `SELECT height_cm, weight_kg, biological_sex, primary_goal FROM user_profiles WHERE user_id = $1`,
