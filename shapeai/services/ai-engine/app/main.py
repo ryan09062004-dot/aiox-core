@@ -12,7 +12,7 @@ logging.basicConfig(
     force=True,
 )
 
-BUILD_VERSION = "20260519-1"
+BUILD_VERSION = "20260519-2"
 
 app = FastAPI(title="ShapeAI AI Engine", version="1.0.0")
 app.include_router(analysis.router)
