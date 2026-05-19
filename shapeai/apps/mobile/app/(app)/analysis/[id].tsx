@@ -2,6 +2,7 @@ import { useEffect, useState, useRef } from 'react'
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native'
 import { useLocalSearchParams, router } from 'expo-router'
 import { pollAnalysis } from '../../../src/services/analysis.service'
+import { generateMealPlan } from '../../../src/services/meal-plan.service'
 
 const STEPS = [
   'IA analisando suas fotos...',
@@ -46,6 +47,7 @@ export default function AnalysisLoadingScreen() {
         if (result.status === 'completed') {
           setProgress(100)
           setDone(true)
+          generateMealPlan().catch(() => {})
           setTimeout(() => router.replace(`/(app)/analysis/${id}/report`), 800)
         } else {
           setAnalysisFailed(true)

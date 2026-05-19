@@ -410,6 +410,22 @@ export default function HomeScreen() {
         </View>
       ) : null}
 
+      {/* ── Atalho Nutrição ── */}
+      <TouchableOpacity
+        style={styles.nutritionShortcut}
+        onPress={() => router.push('/(app)/meal-plan' as never)}
+        activeOpacity={0.85}
+      >
+        <View style={styles.nutritionIcon}>
+          <Ionicons name="restaurant-outline" size={20} color="#4CAF50" />
+        </View>
+        <View style={styles.nutritionText}>
+          <Text style={styles.nutritionTitle}>Plano Alimentar</Text>
+          <Text style={styles.nutritionSub}>5 refeições personalizadas · IA</Text>
+        </View>
+        <Ionicons name="chevron-forward" size={16} color="#333" />
+      </TouchableOpacity>
+
       {/* ── Plano de Hoje ── */}
       {todayWorkout !== null && todayWorkout?.kind === 'session' && (
         <TouchableOpacity
@@ -485,22 +501,6 @@ export default function HomeScreen() {
           <Text style={styles.restText}>🛌  Dia de descanso — volte amanhã mais forte!</Text>
         </View>
       )}
-
-      {/* ── Atalho Nutrição ── */}
-      <TouchableOpacity
-        style={styles.nutritionShortcut}
-        onPress={() => router.push('/(app)/meal-plan' as never)}
-        activeOpacity={0.85}
-      >
-        <View style={styles.nutritionIcon}>
-          <Ionicons name="restaurant-outline" size={20} color="#4CAF50" />
-        </View>
-        <View style={styles.nutritionText}>
-          <Text style={styles.nutritionTitle}>Plano Alimentar</Text>
-          <Text style={styles.nutritionSub}>5 refeições personalizadas · IA</Text>
-        </View>
-        <Ionicons name="chevron-forward" size={16} color="#333" />
-      </TouchableOpacity>
 
       <DailyQuoteCard />
     </ScrollView>

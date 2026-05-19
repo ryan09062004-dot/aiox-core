@@ -180,10 +180,6 @@ export default function CoachScreen() {
         >
           {showSuggestions && (
             <View style={styles.emptyState}>
-              <Image
-              source={PERSONA_IMAGES[coachName]}
-              style={styles.emptyIcon}
-            />
               <Text style={styles.emptyTitle}>Olá! Sou o Personal {coachName}</Text>
               <Text style={styles.emptyBody}>
                 Estou aqui para ajudar com seu treino, explicar exercícios e acompanhar sua evolução.
@@ -308,15 +304,6 @@ const styles = StyleSheet.create({
   messagesContent: { padding: 16, gap: 10 },
 
   emptyState: { alignItems: 'center', paddingTop: 32, paddingHorizontal: 16, gap: 12 },
-  emptyIcon: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    borderWidth: 2,
-    borderColor: '#4CAF50',
-    overflow: 'hidden',
-    marginBottom: 4,
-  },
   emptyTitle: { color: '#fff', fontSize: 18, fontWeight: '700', textAlign: 'center' },
   emptyBody: { color: '#666', fontSize: 14, textAlign: 'center', lineHeight: 20 },
 

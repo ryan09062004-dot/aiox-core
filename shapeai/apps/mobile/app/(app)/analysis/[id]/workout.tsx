@@ -154,55 +154,57 @@ export default function WorkoutScreen() {
         </View>
       </View>
 
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        style={styles.tabsScroll}
-        contentContainerStyle={styles.tabsContent}
-      >
-        {weeks.map((week, index) => (
+      <ScrollView style={styles.daysScroll} contentContainerStyle={styles.daysContent}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          style={styles.tabsScroll}
+          contentContainerStyle={styles.tabsContent}
+        >
+          {weeks.map((week, index) => (
+            <TouchableOpacity
+              key={week.week_number}
+              style={[styles.tab, selectedWeek === index && styles.tabActive]}
+              onPress={() => setSelectedWeek(index)}
+            >
+              <Text style={[styles.tabText, selectedWeek === index && styles.tabTextActive]}>
+                Semana {week.week_number}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+
+        <View style={styles.modeToggleContainer}>
           <TouchableOpacity
-            key={week.week_number}
-            style={[styles.tab, selectedWeek === index && styles.tabActive]}
-            onPress={() => setSelectedWeek(index)}
+            style={[styles.modeBtn, workoutMode === 'gym' && styles.modeBtnActive]}
+            onPress={() => changeMode('gym')}
+            activeOpacity={0.8}
           >
-            <Text style={[styles.tabText, selectedWeek === index && styles.tabTextActive]}>
-              Semana {week.week_number}
+            <Text style={[styles.modeBtnText, workoutMode === 'gym' && styles.modeBtnTextActive]}>
+              Academia
             </Text>
           </TouchableOpacity>
-        ))}
-      </ScrollView>
+          <TouchableOpacity
+            style={[styles.modeBtn, workoutMode === 'home' && styles.modeBtnActive]}
+            onPress={() => changeMode('home')}
+            activeOpacity={0.8}
+          >
+            <Text style={[styles.modeBtnText, workoutMode === 'home' && styles.modeBtnTextActive]}>
+              Casa
+            </Text>
+          </TouchableOpacity>
+        </View>
 
-      <View style={styles.modeToggleContainer}>
-        <TouchableOpacity
-          style={[styles.modeBtn, workoutMode === 'gym' && styles.modeBtnActive]}
-          onPress={() => changeMode('gym')}
-          activeOpacity={0.8}
-        >
-          <Text style={[styles.modeBtnText, workoutMode === 'gym' && styles.modeBtnTextActive]}>
-            Academia
-          </Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.modeBtn, workoutMode === 'home' && styles.modeBtnActive]}
-          onPress={() => changeMode('home')}
-          activeOpacity={0.8}
-        >
-          <Text style={[styles.modeBtnText, workoutMode === 'home' && styles.modeBtnTextActive]}>
-            Casa
-          </Text>
-        </TouchableOpacity>
-      </View>
-
-      <ScrollView style={styles.daysScroll} contentContainerStyle={styles.daysContent}>
-        {displaySessions.map((session, index) => (
-          <WorkoutDayCard
-            key={index}
-            session={session}
-            isCompleted={completed.has(sessionKey(currentWeek.week_number, session.day))}
-            onToggle={() => toggleSession(currentWeek.week_number, session.day)}
-          />
-        ))}
+        <View style={styles.daysCards}>
+          {displaySessions.map((session, index) => (
+            <WorkoutDayCard
+              key={index}
+              session={session}
+              isCompleted={completed.has(sessionKey(currentWeek.week_number, session.day))}
+              onToggle={() => toggleSession(currentWeek.week_number, session.day)}
+            />
+          ))}
+        </View>
       </ScrollView>
     </View>
   )
@@ -240,7 +242,7 @@ const styles = StyleSheet.create({
 
   backBtn: { color: '#4CAF50', fontSize: 16, fontWeight: '600' },
 
-  tabsScroll: { maxHeight: 56, marginTop: 8 },
+  tabsScroll: { maxHeight: 56 },
   tabsContent: { paddingHorizontal: 20, paddingVertical: 8, gap: 8, alignItems: 'center' },
   tab: {
     paddingHorizontal: 16,
@@ -274,5 +276,6 @@ const styles = StyleSheet.create({
   modeBtnTextActive: { color: '#fff' },
 
   daysScroll: { flex: 1 },
-  daysContent: { padding: 20, paddingBottom: 40 },
+  daysContent: { paddingBottom: 40 },
+  daysCards: { paddingHorizontal: 20, paddingTop: 4 },
 })

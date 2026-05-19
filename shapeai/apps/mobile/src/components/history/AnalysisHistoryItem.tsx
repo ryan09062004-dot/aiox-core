@@ -38,7 +38,7 @@ function getStrongestMuscle(scores: Record<string, number>): string | null {
 function scoreLabel(score: number): { text: string; color: string } {
   if (score >= 70) return { text: 'Excelente', color: '#4CAF50' }
   if (score >= 40) return { text: 'Ótimo', color: '#8BC34A' }
-  return { text: 'Regular', color: '#FF9800' }
+  return { text: 'Em Progresso', color: '#64B5F6' }
 }
 
 function formatDate(iso: string): string {
@@ -104,8 +104,11 @@ export function AnalysisHistoryItem({ item, isLatest, index, total, onPress, onW
         testID={`history-item-${item.id}`}
       >
         <View style={styles.featuredHeader}>
+          <View style={styles.featuredBadge}>
+            <Text style={styles.evalNumberFeatured}>#{evalNumber}</Text>
+            <Text style={styles.featuredBadgeLabel}> Mais recente</Text>
+          </View>
           <Text style={styles.featuredDate}>{formatDate(item.created_at)}</Text>
-          <Text style={styles.evalNumberFeatured}>Mais recente</Text>
         </View>
 
         <View style={styles.featuredBody}>
@@ -219,7 +222,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 28,
   },
-  featuredDate: { fontSize: 14, color: '#888', fontWeight: '500' },
+  featuredDate: { fontSize: 13, color: '#666', fontWeight: '500' },
+  featuredBadge: { flexDirection: 'row', alignItems: 'baseline' },
+  featuredBadgeLabel: { fontSize: 14, color: '#4CAF50', fontWeight: '600' },
   featuredBody: {
     flexDirection: 'row',
     alignItems: 'center',

@@ -237,52 +237,54 @@ export default function TreinoTab() {
         </TouchableOpacity>
       </View>
 
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        style={styles.tabsScroll}
-        contentContainerStyle={styles.tabsContent}
-      >
-        {weeks.map((week, index) => (
-          <TouchableOpacity
-            key={week.week_number}
-            style={[styles.tab, selectedWeek === index && styles.tabActive]}
-            onPress={() => setSelectedWeek(index)}
-          >
-            <Text style={[styles.tabText, selectedWeek === index && styles.tabTextActive]}>
-              Semana {week.week_number}
-            </Text>
-          </TouchableOpacity>
-        ))}
-      </ScrollView>
-
-      <View style={styles.modeToggleContainer}>
-        <TouchableOpacity
-          style={[styles.modeBtn, workoutMode === 'gym' && styles.modeBtnActive]}
-          onPress={() => changeMode('gym')}
-        >
-          <Text style={[styles.modeBtnText, workoutMode === 'gym' && styles.modeBtnTextActive]}>Academia</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.modeBtn, workoutMode === 'home' && styles.modeBtnActive]}
-          onPress={() => changeMode('home')}
-        >
-          <Text style={[styles.modeBtnText, workoutMode === 'home' && styles.modeBtnTextActive]}>Em Casa</Text>
-        </TouchableOpacity>
-      </View>
-
       <ScrollView style={styles.daysScroll} contentContainerStyle={styles.daysContent}>
-        {loadingWorkout ? (
-          <ActivityIndicator color="#4CAF50" style={{ marginTop: 40 }} />
-        ) : displaySessions.map((session, i) => (
-          <WorkoutDayCard
-            key={i}
-            session={session}
-            isCompleted={completed.has(sessionKey(currentWeek.week_number, session.day))}
-            onToggle={() => toggleSession(currentWeek.week_number, session.day)}
-            onShare={() => setShareTarget({ session, weekNumber: currentWeek.week_number })}
-          />
-        ))}
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          style={styles.tabsScroll}
+          contentContainerStyle={styles.tabsContent}
+        >
+          {weeks.map((week, index) => (
+            <TouchableOpacity
+              key={week.week_number}
+              style={[styles.tab, selectedWeek === index && styles.tabActive]}
+              onPress={() => setSelectedWeek(index)}
+            >
+              <Text style={[styles.tabText, selectedWeek === index && styles.tabTextActive]}>
+                Semana {week.week_number}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+
+        <View style={styles.modeToggleContainer}>
+          <TouchableOpacity
+            style={[styles.modeBtn, workoutMode === 'gym' && styles.modeBtnActive]}
+            onPress={() => changeMode('gym')}
+          >
+            <Text style={[styles.modeBtnText, workoutMode === 'gym' && styles.modeBtnTextActive]}>Academia</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.modeBtn, workoutMode === 'home' && styles.modeBtnActive]}
+            onPress={() => changeMode('home')}
+          >
+            <Text style={[styles.modeBtnText, workoutMode === 'home' && styles.modeBtnTextActive]}>Em Casa</Text>
+          </TouchableOpacity>
+        </View>
+
+        <View style={styles.daysCards}>
+          {loadingWorkout ? (
+            <ActivityIndicator color="#4CAF50" style={{ marginTop: 40 }} />
+          ) : displaySessions.map((session, i) => (
+            <WorkoutDayCard
+              key={i}
+              session={session}
+              isCompleted={completed.has(sessionKey(currentWeek.week_number, session.day))}
+              onToggle={() => toggleSession(currentWeek.week_number, session.day)}
+              onShare={() => setShareTarget({ session, weekNumber: currentWeek.week_number })}
+            />
+          ))}
+        </View>
       </ScrollView>
 
       {shareTarget && (
@@ -360,7 +362,7 @@ const styles = StyleSheet.create({
   spotifyLabel: { color: '#1DB954', fontSize: 10, fontWeight: '800', letterSpacing: 1.2 },
   spotifyBtnText: { color: '#aaa', fontSize: 13 },
 
-  tabsScroll: { maxHeight: 56, marginTop: 8 },
+  tabsScroll: { maxHeight: 56 },
   tabsContent: { paddingHorizontal: 20, paddingVertical: 8, gap: 8, alignItems: 'center' },
   tab: {
     paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20,
@@ -389,7 +391,8 @@ const styles = StyleSheet.create({
   modeBtnTextActive: { color: '#fff' },
 
   daysScroll: { flex: 1 },
-  daysContent: { padding: 20, paddingBottom: 40 },
+  daysContent: { paddingBottom: 40 },
+  daysCards: { paddingHorizontal: 20, paddingTop: 4 },
 
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'flex-end' },
   pickerMenu: { backgroundColor: '#111', borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 24 },
