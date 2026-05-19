@@ -11,10 +11,10 @@ import { getLatestMealPlan, generateMealPlan } from '../../src/services/meal-pla
 
 const MEAL_ICONS: Record<string, string> = {
   'Café da Manhã': '☀️',
-  'Lanche da Manhã': '🥗',
   'Almoço': '🍽️',
   'Lanche da Tarde': '🥤',
-  'Jantar': '🌙',
+  'Jantar': '🍴',
+  'Ceia': '🌙',
 }
 
 function MacroChip({ label, value, unit }: { label: string; value: number; unit: string }) {
@@ -27,27 +27,43 @@ function MacroChip({ label, value, unit }: { label: string; value: number; unit:
 }
 
 function MealCard({ meal }: { meal: MealItem }) {
+  const allOptions = [meal, ...(meal.alternatives ?? [])]
+  const [optIdx, setOptIdx] = useState(0)
   const [expanded, setExpanded] = useState(false)
-  const icon = MEAL_ICONS[meal.meal_type] ?? '🍴'
+  const current = allOptions[optIdx] ?? meal
+  const icon = MEAL_ICONS[current.meal_type] ?? '🍴'
+  const hasAlts = allOptions.length > 1
+
+  const handleSwap = () => {
+    setExpanded(false)
+    setOptIdx(i => (i + 1) % allOptions.length)
+  }
 
   return (
     <View style={styles.mealCard}>
       <View style={styles.mealHeader}>
         <View style={styles.mealTypeRow}>
           <Text style={styles.mealIcon}>{icon}</Text>
-          <Text style={styles.mealType}>{meal.meal_type}</Text>
+          <Text style={styles.mealType}>{current.meal_type}</Text>
         </View>
-        <Text style={styles.mealCal}>{meal.calories_approx} kcal</Text>
+        <Text style={styles.mealCal}>{current.calories_approx} kcal</Text>
       </View>
 
-      <Text style={styles.mealName}>{meal.name}</Text>
-      <Text style={styles.mealDescription}>{meal.description}</Text>
+      <Text style={styles.mealName}>{current.name}</Text>
+      <Text style={styles.mealDescription}>{current.description}</Text>
 
       <View style={styles.macrosRow}>
-        <MacroChip label="Proteína" value={meal.protein_g} unit="g" />
-        <MacroChip label="Carbs" value={meal.carbs_g} unit="g" />
-        <MacroChip label="Gordura" value={meal.fats_g} unit="g" />
+        <MacroChip label="Proteína" value={current.protein_g} unit="g" />
+        <MacroChip label="Carbs" value={current.carbs_g} unit="g" />
+        <MacroChip label="Gordura" value={current.fats_g} unit="g" />
       </View>
+
+      {hasAlts && (
+        <TouchableOpacity onPress={handleSwap} style={styles.swapPill} activeOpacity={0.7}>
+          <Ionicons name="shuffle-outline" size={13} color="#4CAF50" />
+          <Text style={styles.swapPillText}>Outra opção · {optIdx + 1}/{allOptions.length}</Text>
+        </TouchableOpacity>
+      )}
 
       <TouchableOpacity
         style={styles.ingredientsToggle}
@@ -61,7 +77,7 @@ function MealCard({ meal }: { meal: MealItem }) {
 
       {expanded && (
         <View style={styles.ingredientsList}>
-          {meal.ingredients.map((ing, i) => (
+          {(current.ingredients ?? []).map((ing, i) => (
             <View key={i} style={styles.ingredientRow}>
               <Text style={styles.ingredientBullet}>•</Text>
               <Text style={styles.ingredientText}>{ing}</Text>
@@ -109,25 +125,16 @@ export default function MealPlanScreen() {
     }
   }, [])
 
-  const totalCal = plan?.meals.reduce((s, m) => s + m.calories_approx, 0) ?? 0
-  const totalProt = plan?.meals.reduce((s, m) => s + m.protein_g, 0) ?? 0
-  const totalCarbs = plan?.meals.reduce((s, m) => s + m.carbs_g, 0) ?? 0
-  const totalFat = plan?.meals.reduce((s, m) => s + m.fats_g, 0) ?? 0
+  const meals: MealItem[] = Array.isArray(plan?.meals) ? plan.meals : []
+  const totalCal = meals.reduce((s, m) => s + (m.calories_approx ?? 0), 0)
+  const totalProt = meals.reduce((s, m) => s + (m.protein_g ?? 0), 0)
+  const totalCarbs = meals.reduce((s, m) => s + (m.carbs_g ?? 0), 0)
+  const totalFat = meals.reduce((s, m) => s + (m.fats_g ?? 0), 0)
 
   return (
     <View style={styles.container}>
       <View style={[styles.header, { paddingTop: insets.top + 16 }]}>
         <Text style={styles.headerTitle}>Nutrição</Text>
-        {plan && (
-          <TouchableOpacity onPress={handleGenerate} disabled={generating || loading}>
-            <View style={styles.regenRow}>
-              <Ionicons name="refresh-outline" size={14} color={generating || loading ? '#333' : '#4CAF50'} />
-              <Text style={[styles.regenBtn, (generating || loading) && styles.regenBtnDisabled]}>
-                {generating ? 'Gerando...' : 'Atualizar'}
-              </Text>
-            </View>
-          </TouchableOpacity>
-        )}
       </View>
 
       {loading ? (
@@ -163,9 +170,15 @@ export default function MealPlanScreen() {
 
           {error && <Text style={styles.errorText}>{error}</Text>}
 
-          {plan.meals.map((meal, i) => (
-            <MealCard key={i} meal={meal} />
-          ))}
+          {meals.length === 0 ? (
+            <View style={styles.center}>
+              <Text style={styles.emptyText}>Nenhuma refeição encontrada. Toque em Atualizar.</Text>
+            </View>
+          ) : (
+            meals.map((meal, i) => (
+              <MealCard key={i} meal={meal} />
+            ))
+          )}
         </ScrollView>
       ) : (
         <View style={styles.center}>
@@ -210,9 +223,6 @@ const styles = StyleSheet.create({
     backgroundColor: '#111',
   },
   headerTitle: { color: '#fff', fontSize: 22, fontWeight: '800' },
-  regenRow: { flexDirection: 'row', alignItems: 'center', gap: 5 },
-  regenBtn: { color: '#4CAF50', fontSize: 14, fontWeight: '600' },
-  regenBtnDisabled: { color: '#333' },
 
   scroll: { flex: 1 },
   scrollContent: { padding: 16, gap: 14, paddingBottom: 40 },
@@ -245,6 +255,14 @@ const styles = StyleSheet.create({
   mealIcon: { fontSize: 16 },
   mealType: { color: '#4CAF50', fontSize: 12, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.5 },
   mealCal: { color: '#555', fontSize: 12, fontWeight: '600' },
+  swapPill: {
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    alignSelf: 'flex-start',
+    backgroundColor: '#0E1E0E', borderRadius: 20,
+    borderWidth: 1, borderColor: '#254025',
+    paddingVertical: 6, paddingHorizontal: 12,
+  },
+  swapPillText: { color: '#4CAF50', fontSize: 12, fontWeight: '600' },
   mealName: { color: '#fff', fontSize: 17, fontWeight: '700', lineHeight: 22 },
   mealDescription: { color: '#666', fontSize: 13, lineHeight: 18 },
 
