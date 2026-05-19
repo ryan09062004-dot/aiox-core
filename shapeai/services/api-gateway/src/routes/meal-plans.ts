@@ -3,6 +3,15 @@ import axios from 'axios'
 import { pool } from '../db/client'
 import { requireAuth } from '../middleware/auth'
 
+function parseMeals(raw: unknown): unknown[] {
+  if (!raw) return []
+  if (Array.isArray(raw)) return raw
+  if (typeof raw === 'string') {
+    try { return JSON.parse(raw) } catch { return [] }
+  }
+  return []
+}
+
 export async function mealPlansRoutes(app: FastifyInstance) {
   app.get('/meal-plans/latest', { preHandler: requireAuth }, async (request, reply) => {
     const userId = request.authUser.id
@@ -11,7 +20,7 @@ export async function mealPlansRoutes(app: FastifyInstance) {
       [userId]
     )
     if (!rows[0]) return reply.status(404).send({ error: 'NOT_FOUND' })
-    return reply.send(rows[0])
+    return reply.send({ ...rows[0], meals: parseMeals(rows[0].meals) })
   })
 
   app.post('/meal-plans/generate', { preHandler: requireAuth }, async (request, reply) => {
