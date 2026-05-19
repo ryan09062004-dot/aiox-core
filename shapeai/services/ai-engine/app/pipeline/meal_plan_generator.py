@@ -3,6 +3,77 @@ import random
 
 logger = logging.getLogger(__name__)
 
+_MEAL_IMAGES: dict[str, str] = {
+    "Ovos mexidos com aveia e banana":             "https://images.unsplash.com/photo-1525351484163-7529414344d8?w=700&q=80&fit=crop",
+    "Panqueca proteica de banana":                  "https://images.unsplash.com/photo-1565299543923-37dd37887442?w=700&q=80&fit=crop",
+    "Vitamina de banana com whey e pasta de amendoim": "https://images.unsplash.com/photo-1553530666-ba11a7da3888?w=700&q=80&fit=crop",
+    "Omelete com abacate e café":                   "https://images.unsplash.com/photo-1582169505937-b9992bd01696?w=700&q=80&fit=crop",
+    "Iogurte natural com frutas vermelhas e linhaça": "https://images.unsplash.com/photo-1488477181946-6428a0291777?w=700&q=80&fit=crop",
+    "Tapioca de ovo com café preto":                "https://images.unsplash.com/photo-1525351484163-7529414344d8?w=700&q=80&fit=crop",
+    "Vitamina de banana com aveia e whey":          "https://images.unsplash.com/photo-1553530666-ba11a7da3888?w=700&q=80&fit=crop",
+    "Torrada integral com ovo mexido e suco":       "https://images.unsplash.com/photo-1509440159596-0249088772ff?w=700&q=80&fit=crop",
+    "Mingau proteico de aveia com frutas":          "https://images.unsplash.com/photo-1517673408408-a45b83c5b1a6?w=700&q=80&fit=crop",
+    "Tapioca com ovo e queijo minas":               "https://images.unsplash.com/photo-1525351484163-7529414344d8?w=700&q=80&fit=crop",
+    "Pão integral com ovo e abacate":               "https://images.unsplash.com/photo-1541807084-5c52e6a49121?w=700&q=80&fit=crop",
+    "Aveia com iogurte, banana e mel":              "https://images.unsplash.com/photo-1517673408408-a45b83c5b1a6?w=700&q=80&fit=crop",
+    "Frango grelhado com arroz e feijão":           "https://images.unsplash.com/photo-1604908176997-125f25cc6f3d?w=700&q=80&fit=crop",
+    "Carne moída com macarrão integral":            "https://images.unsplash.com/photo-1555949258-eb67b1ef0ceb?w=700&q=80&fit=crop",
+    "Atum com arroz integral e legumes":            "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=700&q=80&fit=crop",
+    "Frango grelhado com salada e ovo":             "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=700&q=80&fit=crop",
+    "Atum com salada verde e azeite":               "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=700&q=80&fit=crop",
+    "Tilápia assada com legumes coloridos":         "https://images.unsplash.com/photo-1467003909585-2f8a72700288?w=700&q=80&fit=crop",
+    "Frango com macarrão integral e legumes":       "https://images.unsplash.com/photo-1555949258-eb67b1ef0ceb?w=700&q=80&fit=crop",
+    "Arroz integral com feijão e frango":           "https://images.unsplash.com/photo-1604908176997-125f25cc6f3d?w=700&q=80&fit=crop",
+    "Patinho grelhado com batata-doce e salada":    "https://images.unsplash.com/photo-1529042410759-befb1204b468?w=700&q=80&fit=crop",
+    "Frango ou carne com arroz, feijão e salada":   "https://images.unsplash.com/photo-1604908176997-125f25cc6f3d?w=700&q=80&fit=crop",
+    "Filé de frango com batata assada e legumes":   "https://images.unsplash.com/photo-1604908176997-125f25cc6f3d?w=700&q=80&fit=crop",
+    "Macarrão integral com molho bolonhesa":        "https://images.unsplash.com/photo-1555949258-eb67b1ef0ceb?w=700&q=80&fit=crop",
+    "Iogurte grego com granola":                    "https://images.unsplash.com/photo-1488477181946-6428a0291777?w=700&q=80&fit=crop",
+    "Sanduíche proteico integral":                  "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=700&q=80&fit=crop",
+    "Shake de whey com aveia e banana":             "https://images.unsplash.com/photo-1553530666-ba11a7da3888?w=700&q=80&fit=crop",
+    "Iogurte natural com whey e canela":            "https://images.unsplash.com/photo-1488477181946-6428a0291777?w=700&q=80&fit=crop",
+    "Pepino com pasta de ricota e ervas":           "https://images.unsplash.com/photo-1512621776951-a57141f2eefd?w=700&q=80&fit=crop",
+    "Frutas vermelhas com castanhas":               "https://images.unsplash.com/photo-1498557850523-fd3d118b962e?w=700&q=80&fit=crop",
+    "Fruta com pasta de amendoim":                  "https://images.unsplash.com/photo-1571771894842-cbba1e1f5aae?w=700&q=80&fit=crop",
+    "Torrada integral com ricota":                  "https://images.unsplash.com/photo-1509440159596-0249088772ff?w=700&q=80&fit=crop",
+    "Banana com iogurte grego":                     "https://images.unsplash.com/photo-1571771894842-cbba1e1f5aae?w=700&q=80&fit=crop",
+    "Pão integral com pasta de atum":               "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=700&q=80&fit=crop",
+    "Frutas com mix de castanhas":                  "https://images.unsplash.com/photo-1490474418585-ba9bad8fd0ea?w=700&q=80&fit=crop",
+    "Iogurte com granola e mel":                    "https://images.unsplash.com/photo-1488477181946-6428a0291777?w=700&q=80&fit=crop",
+    "Carne moída com batata-doce e legumes":        "https://images.unsplash.com/photo-1529042410759-befb1204b468?w=700&q=80&fit=crop",
+    "Salmão grelhado com quinoa e espinafre":       "https://images.unsplash.com/photo-1519708227418-c8fd9a32b7a2?w=700&q=80&fit=crop",
+    "Frango assado com arroz e brócolis":           "https://images.unsplash.com/photo-1604908176997-125f25cc6f3d?w=700&q=80&fit=crop",
+    "Peixe grelhado com legumes no vapor":          "https://images.unsplash.com/photo-1467003909585-2f8a72700288?w=700&q=80&fit=crop",
+    "Frango com chuchu e cenoura cozidos":          "https://images.unsplash.com/photo-1604908176997-125f25cc6f3d?w=700&q=80&fit=crop",
+    "Omelete de claras com espinafre":              "https://images.unsplash.com/photo-1582169505937-b9992bd01696?w=700&q=80&fit=crop",
+    "Salmão com quinoa e brócolis":                 "https://images.unsplash.com/photo-1519708227418-c8fd9a32b7a2?w=700&q=80&fit=crop",
+    "Frango assado com batata-doce e salada":       "https://images.unsplash.com/photo-1604908176997-125f25cc6f3d?w=700&q=80&fit=crop",
+    "Omelete com batata-doce e legumes":            "https://images.unsplash.com/photo-1582169505937-b9992bd01696?w=700&q=80&fit=crop",
+    "Omelete misto com batata-doce":                "https://images.unsplash.com/photo-1582169505937-b9992bd01696?w=700&q=80&fit=crop",
+    "Peixe grelhado com arroz e salada":            "https://images.unsplash.com/photo-1467003909585-2f8a72700288?w=700&q=80&fit=crop",
+    "Frango ensopado com legumes":                  "https://images.unsplash.com/photo-1604908176997-125f25cc6f3d?w=700&q=80&fit=crop",
+    "Iogurte grego com castanhas":                  "https://images.unsplash.com/photo-1488477181946-6428a0291777?w=700&q=80&fit=crop",
+    "Omelete de queijo minas":                      "https://images.unsplash.com/photo-1582169505937-b9992bd01696?w=700&q=80&fit=crop",
+    "Cottage com nozes e mel":                      "https://images.unsplash.com/photo-1488477181946-6428a0291777?w=700&q=80&fit=crop",
+    "Iogurte desnatado com canela":                 "https://images.unsplash.com/photo-1488477181946-6428a0291777?w=700&q=80&fit=crop",
+    "Chá com banana pequena":                       "https://images.unsplash.com/photo-1571771894842-cbba1e1f5aae?w=700&q=80&fit=crop",
+    "Claras de ovo mexidas com temperos":           "https://images.unsplash.com/photo-1525351484163-7529414344d8?w=700&q=80&fit=crop",
+    "Banana com manteiga de amendoim":              "https://images.unsplash.com/photo-1571771894842-cbba1e1f5aae?w=700&q=80&fit=crop",
+    "Iogurte grego com mel":                        "https://images.unsplash.com/photo-1488477181946-6428a0291777?w=700&q=80&fit=crop",
+    "Torrada integral com ovo cozido":              "https://images.unsplash.com/photo-1509440159596-0249088772ff?w=700&q=80&fit=crop",
+    "Iogurte com frutas e canela":                  "https://images.unsplash.com/photo-1488477181946-6428a0291777?w=700&q=80&fit=crop",
+    "Torrada integral com queijo cottage":          "https://images.unsplash.com/photo-1509440159596-0249088772ff?w=700&q=80&fit=crop",
+    "Leite morno com mel e canela":                 "https://images.unsplash.com/photo-1550583724-b2692b85b150?w=700&q=80&fit=crop",
+}
+
+_MEAL_IMAGE_FALLBACK: dict[str, str] = {
+    "Café da Manhã":   "https://images.unsplash.com/photo-1525351484163-7529414344d8?w=700&q=80&fit=crop",
+    "Almoço":          "https://images.unsplash.com/photo-1604908176997-125f25cc6f3d?w=700&q=80&fit=crop",
+    "Lanche da Tarde": "https://images.unsplash.com/photo-1488477181946-6428a0291777?w=700&q=80&fit=crop",
+    "Jantar":          "https://images.unsplash.com/photo-1467003909585-2f8a72700288?w=700&q=80&fit=crop",
+    "Ceia":            "https://images.unsplash.com/photo-1488477181946-6428a0291777?w=700&q=80&fit=crop",
+}
+
 _TEMPLATES = {
     "hypertrophy": [
         {
@@ -495,15 +566,18 @@ def _calc_scale(goal: str, height_cm: float, weight_kg: float, sex: str) -> floa
 
 
 def _build_meal(slot_meal_type: str, opt: dict, scale: float) -> dict:
+    name = opt["name"]
+    image_url = _MEAL_IMAGES.get(name) or _MEAL_IMAGE_FALLBACK.get(slot_meal_type, "")
     return {
         "meal_type": slot_meal_type,
-        "name": opt["name"],
+        "name": name,
         "description": opt["description"],
         "calories_approx": round(opt["base_calories"] * scale),
         "protein_g": round(opt["base_protein"] * scale),
         "carbs_g": round(opt["base_carbs"] * scale),
         "fats_g": round(opt["base_fat"] * scale),
         "ingredients": opt["ingredients"],
+        "image_url": image_url,
     }
 
 

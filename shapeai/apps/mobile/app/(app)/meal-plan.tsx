@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import {
   View, Text, ScrollView, StyleSheet,
-  TouchableOpacity, ActivityIndicator,
+  TouchableOpacity, ActivityIndicator, Modal, Image,
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { router } from 'expo-router'
@@ -29,63 +29,103 @@ function MacroChip({ label, value, unit }: { label: string; value: number; unit:
 function MealCard({ meal }: { meal: MealItem }) {
   const allOptions = [meal, ...(meal.alternatives ?? [])]
   const [optIdx, setOptIdx] = useState(0)
-  const [expanded, setExpanded] = useState(false)
+  const [detailOpen, setDetailOpen] = useState(false)
   const current = allOptions[optIdx] ?? meal
   const icon = MEAL_ICONS[current.meal_type] ?? '🍴'
   const hasAlts = allOptions.length > 1
 
-  const handleSwap = () => {
-    setExpanded(false)
-    setOptIdx(i => (i + 1) % allOptions.length)
-  }
+  const handleSwap = () => setOptIdx(i => (i + 1) % allOptions.length)
 
   return (
-    <View style={styles.mealCard}>
-      <View style={styles.mealHeader}>
-        <View style={styles.mealTypeRow}>
-          <Text style={styles.mealIcon}>{icon}</Text>
-          <Text style={styles.mealType}>{current.meal_type}</Text>
+    <>
+      <TouchableOpacity style={styles.mealCard} onPress={() => setDetailOpen(true)} activeOpacity={0.88}>
+        <View style={styles.mealHeader}>
+          <View style={styles.mealTypeRow}>
+            <Text style={styles.mealIcon}>{icon}</Text>
+            <Text style={styles.mealType}>{current.meal_type}</Text>
+          </View>
+          <Text style={styles.mealCal}>{current.calories_approx} kcal</Text>
         </View>
-        <Text style={styles.mealCal}>{current.calories_approx} kcal</Text>
-      </View>
 
-      <Text style={styles.mealName}>{current.name}</Text>
-      <Text style={styles.mealDescription}>{current.description}</Text>
+        <Text style={styles.mealName}>{current.name}</Text>
+        <Text style={styles.mealDescription}>{current.description}</Text>
 
-      <View style={styles.macrosRow}>
-        <MacroChip label="Proteína" value={current.protein_g} unit="g" />
-        <MacroChip label="Carbs" value={current.carbs_g} unit="g" />
-        <MacroChip label="Gordura" value={current.fats_g} unit="g" />
-      </View>
+        <View style={styles.macrosRow}>
+          <MacroChip label="Proteína" value={current.protein_g} unit="g" />
+          <MacroChip label="Carbs" value={current.carbs_g} unit="g" />
+          <MacroChip label="Gordura" value={current.fats_g} unit="g" />
+        </View>
 
-      {hasAlts && (
-        <TouchableOpacity onPress={handleSwap} style={styles.swapPill} activeOpacity={0.7}>
-          <Ionicons name="shuffle-outline" size={13} color="#4CAF50" />
-          <Text style={styles.swapPillText}>Outra opção · {optIdx + 1}/{allOptions.length}</Text>
-        </TouchableOpacity>
-      )}
-
-      <TouchableOpacity
-        style={styles.ingredientsToggle}
-        onPress={() => setExpanded((v) => !v)}
-        activeOpacity={0.7}
-      >
-        <Text style={styles.ingredientsToggleText}>
-          {expanded ? '▲ Ocultar ingredientes' : '▼ Ver ingredientes'}
-        </Text>
+        {hasAlts && (
+          <TouchableOpacity onPress={handleSwap} style={styles.swapPill} activeOpacity={0.7}>
+            <Ionicons name="shuffle-outline" size={13} color="#4CAF50" />
+            <Text style={styles.swapPillText}>Outra opção · {optIdx + 1}/{allOptions.length}</Text>
+          </TouchableOpacity>
+        )}
       </TouchableOpacity>
 
-      {expanded && (
-        <View style={styles.ingredientsList}>
-          {(current.ingredients ?? []).map((ing, i) => (
-            <View key={i} style={styles.ingredientRow}>
-              <Text style={styles.ingredientBullet}>•</Text>
-              <Text style={styles.ingredientText}>{ing}</Text>
-            </View>
-          ))}
+      <Modal
+        visible={detailOpen}
+        animationType="slide"
+        transparent
+        onRequestClose={() => setDetailOpen(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalSheet}>
+            {current.image_url ? (
+              <Image source={{ uri: current.image_url }} style={styles.modalImage} resizeMode="cover" />
+            ) : (
+              <View style={styles.modalImagePlaceholder}>
+                <Text style={{ fontSize: 40 }}>{icon}</Text>
+              </View>
+            )}
+            <TouchableOpacity style={styles.modalClose} onPress={() => setDetailOpen(false)} activeOpacity={0.8}>
+              <Ionicons name="close" size={18} color="#fff" />
+            </TouchableOpacity>
+
+            <ScrollView contentContainerStyle={styles.modalContent} showsVerticalScrollIndicator={false}>
+              <View style={styles.mealHeader}>
+                <View style={styles.mealTypeRow}>
+                  <Text style={styles.mealIcon}>{icon}</Text>
+                  <Text style={styles.mealType}>{current.meal_type}</Text>
+                </View>
+                <Text style={styles.mealCal}>{current.calories_approx} kcal</Text>
+              </View>
+
+              <Text style={styles.modalTitle}>{current.name}</Text>
+              <Text style={styles.mealDescription}>{current.description}</Text>
+
+              <View style={styles.macrosRow}>
+                <MacroChip label="Proteína" value={current.protein_g} unit="g" />
+                <MacroChip label="Carbs" value={current.carbs_g} unit="g" />
+                <MacroChip label="Gordura" value={current.fats_g} unit="g" />
+              </View>
+
+              <Text style={styles.ingredientsTitle}>Ingredientes</Text>
+              <View style={styles.ingredientsList}>
+                {(current.ingredients ?? []).map((ing, i) => (
+                  <View key={i} style={styles.ingredientRow}>
+                    <Text style={styles.ingredientBullet}>•</Text>
+                    <Text style={styles.ingredientText}>{ing}</Text>
+                  </View>
+                ))}
+              </View>
+
+              {hasAlts && (
+                <TouchableOpacity
+                  onPress={handleSwap}
+                  style={[styles.swapPill, { alignSelf: 'center', marginTop: 8 }]}
+                  activeOpacity={0.7}
+                >
+                  <Ionicons name="shuffle-outline" size={13} color="#4CAF50" />
+                  <Text style={styles.swapPillText}>Outra opção · {optIdx + 1}/{allOptions.length}</Text>
+                </TouchableOpacity>
+              )}
+            </ScrollView>
+          </View>
         </View>
-      )}
-    </View>
+      </Modal>
+    </>
   )
 }
 
@@ -274,10 +314,9 @@ const styles = StyleSheet.create({
   macroValue: { color: '#fff', fontSize: 14, fontWeight: '700' },
   macroLabel: { color: '#555', fontSize: 10, fontWeight: '600' },
 
-  ingredientsToggle: { paddingTop: 2 },
-  ingredientsToggleText: { color: '#4CAF50', fontSize: 13, fontWeight: '600' },
+  ingredientsTitle: { color: '#444', fontSize: 11, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.5, marginTop: 8, marginBottom: 6 },
 
-  ingredientsList: { gap: 5, paddingTop: 4 },
+  ingredientsList: { gap: 6 },
   ingredientRow: { flexDirection: 'row', gap: 8, alignItems: 'flex-start' },
   ingredientBullet: { color: '#4CAF50', fontSize: 14, lineHeight: 20 },
   ingredientText: { flex: 1, color: '#888', fontSize: 13, lineHeight: 20 },
@@ -292,4 +331,31 @@ const styles = StyleSheet.create({
   },
   generateBtnText: { color: '#0A0A0A', fontSize: 15, fontWeight: '700' },
   errorText: { color: '#EF5350', fontSize: 14, textAlign: 'center' },
+
+  modalOverlay: {
+    flex: 1, backgroundColor: 'rgba(0,0,0,0.7)',
+    justifyContent: 'flex-end',
+  },
+  modalSheet: {
+    backgroundColor: '#111',
+    borderTopLeftRadius: 24, borderTopRightRadius: 24,
+    overflow: 'hidden',
+    maxHeight: '90%',
+  },
+  modalImage: {
+    width: '100%', height: 220,
+  },
+  modalImagePlaceholder: {
+    width: '100%', height: 160,
+    backgroundColor: '#1A1A1A',
+    alignItems: 'center', justifyContent: 'center',
+  },
+  modalClose: {
+    position: 'absolute', top: 14, right: 14,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    borderRadius: 16, width: 32, height: 32,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  modalContent: { padding: 20, gap: 12, paddingBottom: 40 },
+  modalTitle: { color: '#fff', fontSize: 20, fontWeight: '800', lineHeight: 26 },
 })
