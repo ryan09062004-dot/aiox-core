@@ -34,11 +34,9 @@ function MealCard({ meal }: { meal: MealItem }) {
   const icon = MEAL_ICONS[current.meal_type] ?? '🍴'
   const hasAlts = allOptions.length > 1
 
-  const handleSwap = () => setOptIdx(i => (i + 1) % allOptions.length)
-
   return (
     <>
-      <TouchableOpacity style={styles.mealCard} onPress={() => setDetailOpen(true)} activeOpacity={0.88}>
+      <TouchableOpacity style={styles.mealCard} onPress={() => setDetailOpen(true)} activeOpacity={0.85}>
         <View style={styles.mealHeader}>
           <View style={styles.mealTypeRow}>
             <Text style={styles.mealIcon}>{icon}</Text>
@@ -48,7 +46,7 @@ function MealCard({ meal }: { meal: MealItem }) {
         </View>
 
         <Text style={styles.mealName}>{current.name}</Text>
-        <Text style={styles.mealDescription}>{current.description}</Text>
+        <Text style={styles.mealDescription} numberOfLines={2}>{current.description}</Text>
 
         <View style={styles.macrosRow}>
           <MacroChip label="Proteína" value={current.protein_g} unit="g" />
@@ -56,12 +54,12 @@ function MealCard({ meal }: { meal: MealItem }) {
           <MacroChip label="Gordura" value={current.fats_g} unit="g" />
         </View>
 
-        {hasAlts && (
-          <TouchableOpacity onPress={handleSwap} style={styles.swapPill} activeOpacity={0.7}>
-            <Ionicons name="shuffle-outline" size={13} color="#4CAF50" />
-            <Text style={styles.swapPillText}>Outra opção · {optIdx + 1}/{allOptions.length}</Text>
-          </TouchableOpacity>
-        )}
+        <View style={styles.cardFooter}>
+          <Text style={styles.cardFooterText}>
+            {hasAlts ? `Ver detalhes · ${allOptions.length} opções` : 'Ver detalhes'}
+          </Text>
+          <Ionicons name="chevron-forward" size={12} color="#444" />
+        </View>
       </TouchableOpacity>
 
       <Modal
@@ -76,7 +74,7 @@ function MealCard({ meal }: { meal: MealItem }) {
               <Image source={{ uri: current.image_url }} style={styles.modalImage} resizeMode="cover" />
             ) : (
               <View style={styles.modalImagePlaceholder}>
-                <Text style={{ fontSize: 40 }}>{icon}</Text>
+                <Text style={{ fontSize: 44 }}>{icon}</Text>
               </View>
             )}
             <TouchableOpacity style={styles.modalClose} onPress={() => setDetailOpen(false)} activeOpacity={0.8}>
@@ -101,7 +99,14 @@ function MealCard({ meal }: { meal: MealItem }) {
                 <MacroChip label="Gordura" value={current.fats_g} unit="g" />
               </View>
 
-              <Text style={styles.ingredientsTitle}>Ingredientes</Text>
+              {current.preparation_method ? (
+                <>
+                  <Text style={styles.sectionTitle}>Modo de preparo</Text>
+                  <Text style={styles.prepText}>{current.preparation_method}</Text>
+                </>
+              ) : null}
+
+              <Text style={styles.sectionTitle}>Ingredientes</Text>
               <View style={styles.ingredientsList}>
                 {(current.ingredients ?? []).map((ing, i) => (
                   <View key={i} style={styles.ingredientRow}>
@@ -112,14 +117,25 @@ function MealCard({ meal }: { meal: MealItem }) {
               </View>
 
               {hasAlts && (
-                <TouchableOpacity
-                  onPress={handleSwap}
-                  style={[styles.swapPill, { alignSelf: 'center', marginTop: 8 }]}
-                  activeOpacity={0.7}
-                >
-                  <Ionicons name="shuffle-outline" size={13} color="#4CAF50" />
-                  <Text style={styles.swapPillText}>Outra opção · {optIdx + 1}/{allOptions.length}</Text>
-                </TouchableOpacity>
+                <View style={styles.altSection}>
+                  <Text style={styles.sectionTitle}>Outras opções</Text>
+                  {allOptions.map((opt, i) => (
+                    <TouchableOpacity
+                      key={i}
+                      style={[styles.altRow, i === optIdx && styles.altRowActive]}
+                      onPress={() => setOptIdx(i)}
+                      activeOpacity={0.75}
+                    >
+                      <View style={[styles.altRadio, i === optIdx && styles.altRadioActive]}>
+                        {i === optIdx && <View style={styles.altRadioDot} />}
+                      </View>
+                      <Text style={[styles.altName, i === optIdx && styles.altNameActive]} numberOfLines={2}>
+                        {opt.name}
+                      </Text>
+                      <Text style={styles.altCal}>{opt.calories_approx} kcal</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
               )}
             </ScrollView>
           </View>
@@ -295,16 +311,18 @@ const styles = StyleSheet.create({
   mealIcon: { fontSize: 16 },
   mealType: { color: '#4CAF50', fontSize: 12, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.5 },
   mealCal: { color: '#555', fontSize: 12, fontWeight: '600' },
-  swapPill: {
-    flexDirection: 'row', alignItems: 'center', gap: 6,
-    alignSelf: 'flex-start',
-    backgroundColor: '#0E1E0E', borderRadius: 20,
-    borderWidth: 1, borderColor: '#254025',
-    paddingVertical: 6, paddingHorizontal: 12,
-  },
-  swapPillText: { color: '#4CAF50', fontSize: 12, fontWeight: '600' },
   mealName: { color: '#fff', fontSize: 17, fontWeight: '700', lineHeight: 22 },
   mealDescription: { color: '#666', fontSize: 13, lineHeight: 18 },
+
+  cardFooter: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingTop: 4,
+    borderTopWidth: 1,
+    borderTopColor: '#1A1A1A',
+  },
+  cardFooterText: { flex: 1, color: '#444', fontSize: 12, fontWeight: '500' },
 
   macrosRow: { flexDirection: 'row', gap: 8 },
   macroChip: {
@@ -314,12 +332,35 @@ const styles = StyleSheet.create({
   macroValue: { color: '#fff', fontSize: 14, fontWeight: '700' },
   macroLabel: { color: '#555', fontSize: 10, fontWeight: '600' },
 
-  ingredientsTitle: { color: '#444', fontSize: 11, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.5, marginTop: 8, marginBottom: 6 },
+  sectionTitle: {
+    color: '#444', fontSize: 11, fontWeight: '700',
+    textTransform: 'uppercase', letterSpacing: 0.5,
+    marginTop: 8, marginBottom: 6,
+  },
+  prepText: { color: '#888', fontSize: 13, lineHeight: 20 },
 
   ingredientsList: { gap: 6 },
   ingredientRow: { flexDirection: 'row', gap: 8, alignItems: 'flex-start' },
   ingredientBullet: { color: '#4CAF50', fontSize: 14, lineHeight: 20 },
   ingredientText: { flex: 1, color: '#888', fontSize: 13, lineHeight: 20 },
+
+  altSection: { gap: 8 },
+  altRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 10,
+    backgroundColor: '#1A1A1A', borderRadius: 12,
+    padding: 12, borderWidth: 1, borderColor: '#242424',
+  },
+  altRowActive: { borderColor: '#4CAF50', backgroundColor: '#0E1E0E' },
+  altRadio: {
+    width: 18, height: 18, borderRadius: 9,
+    borderWidth: 2, borderColor: '#333',
+    alignItems: 'center', justifyContent: 'center',
+  },
+  altRadioActive: { borderColor: '#4CAF50' },
+  altRadioDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#4CAF50' },
+  altName: { flex: 1, color: '#888', fontSize: 13, lineHeight: 18 },
+  altNameActive: { color: '#fff', fontWeight: '600' },
+  altCal: { color: '#555', fontSize: 12, fontWeight: '600' },
 
   emptyTitle: { color: '#fff', fontSize: 20, fontWeight: '700', textAlign: 'center' },
   emptyText: { color: '#666', fontSize: 14, textAlign: 'center', lineHeight: 22, maxWidth: 280 },
@@ -333,18 +374,16 @@ const styles = StyleSheet.create({
   errorText: { color: '#EF5350', fontSize: 14, textAlign: 'center' },
 
   modalOverlay: {
-    flex: 1, backgroundColor: 'rgba(0,0,0,0.7)',
+    flex: 1, backgroundColor: 'rgba(0,0,0,0.75)',
     justifyContent: 'flex-end',
   },
   modalSheet: {
     backgroundColor: '#111',
     borderTopLeftRadius: 24, borderTopRightRadius: 24,
     overflow: 'hidden',
-    maxHeight: '90%',
+    maxHeight: '92%',
   },
-  modalImage: {
-    width: '100%', height: 220,
-  },
+  modalImage: { width: '100%', height: 220 },
   modalImagePlaceholder: {
     width: '100%', height: 160,
     backgroundColor: '#1A1A1A',
@@ -352,10 +391,10 @@ const styles = StyleSheet.create({
   },
   modalClose: {
     position: 'absolute', top: 14, right: 14,
-    backgroundColor: 'rgba(0,0,0,0.5)',
+    backgroundColor: 'rgba(0,0,0,0.55)',
     borderRadius: 16, width: 32, height: 32,
     alignItems: 'center', justifyContent: 'center',
   },
-  modalContent: { padding: 20, gap: 12, paddingBottom: 40 },
+  modalContent: { padding: 20, gap: 12, paddingBottom: 44 },
   modalTitle: { color: '#fff', fontSize: 20, fontWeight: '800', lineHeight: 26 },
 })

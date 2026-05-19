@@ -7,6 +7,7 @@ export interface MealItem {
   carbs_g: number
   fats_g: number
   ingredients: string[]
+  preparation_method?: string
   image_url?: string
   alternatives?: Omit<MealItem, 'alternatives'>[]
 }

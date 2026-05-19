@@ -175,7 +175,7 @@ export function AnalysisHistoryItem({ item, isLatest, index, total, onPress, onW
           {score != null ? (
             <View style={styles.compactMetrics}>
               <View style={styles.compactMetric}>
-                <Text style={[styles.evalNumber, { color: scoreColor }]}>#{evalNumber}</Text>
+                <Text style={styles.evalNumber}>#{evalNumber}</Text>
                 <Text style={styles.compactLabel}>avaliação</Text>
               </View>
               {bodyFat != null && (
@@ -282,8 +282,8 @@ const styles = StyleSheet.create({
   muscleRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   muscleTriangle: { fontSize: 10, lineHeight: 14 },
   muscleText: { fontSize: 12, color: '#aaa', fontWeight: '500', flexShrink: 1 },
-  evalNumber: { fontSize: 20, fontWeight: '700', color: '#fff' },
-  evalNumberFeatured: { fontSize: 16, fontWeight: '600', color: '#4CAF50' },
+  evalNumber: { fontSize: 20, fontWeight: '700', color: '#64B5F6' },
+  evalNumberFeatured: { fontSize: 16, fontWeight: '600', color: '#64B5F6' },
   pending: { fontSize: 13, color: '#555', fontStyle: 'italic' },
   compactInner: { flexDirection: 'row', alignItems: 'center' },
   compactLeft: { flex: 1 },
