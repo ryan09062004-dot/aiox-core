@@ -39,7 +39,7 @@ export async function mealPlansRoutes(app: FastifyInstance) {
       `INSERT INTO meal_plans (user_id, goal, height_cm, weight_kg, sex, meals)
        VALUES ($1, $2, $3, $4, $5, $6)
        RETURNING *`,
-      [userId, profile.primary_goal, profile.height_cm, profile.weight_kg, profile.biological_sex, JSON.stringify(meals)]
+      [userId, profile.primary_goal, Math.round(Number(profile.height_cm)), Math.round(Number(profile.weight_kg)), profile.biological_sex, JSON.stringify(meals)]
     )
 
     return reply.status(201).send(inserted[0])
