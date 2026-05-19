@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback, useRef } from 'react'
 import {
   View, Text, StyleSheet, TouchableOpacity,
-  ActivityIndicator, Image, ScrollView, TextInput, Share, ImageBackground, Animated, Easing,
+  ActivityIndicator, Image, ScrollView, TextInput, Share, Animated, Easing,
 } from 'react-native'
 import { BlurView } from 'expo-blur'
 import MaskedView from '@react-native-masked-view/masked-view'
@@ -24,29 +24,35 @@ import type { AnalysisSummary, WorkoutSession, PrimaryGoal } from '@shapeai/shar
 
 // ─── Frases motivacionais ─────────────────────────────────────────────────────
 
-const UNSPLASH_BASE = 'https://images.unsplash.com/photo'
+const QUOTES: string[] = [
+  'Consistência bate motivação todo dia.',
+  'Seu único concorrente é quem você era ontem.',
+  'Progresso, não perfeição.',
+  'Todo grande shape começou com o primeiro treino.',
+  'Dor de hoje, resultado de amanhã.',
+  'Disciplina é a ponte entre metas e conquistas.',
+  'O corpo alcança o que a mente acredita.',
+  'Cada repetição te aproxima da melhor versão de você.',
+  'Não pare quando estiver cansado. Pare quando terminar.',
+  'Força não vem do que você consegue fazer. Vem de superar o que achava impossível.',
+  'Comece devagar. Só não pare.',
+  'O shape dos seus sonhos exige o esforço que outros evitam.',
+  'Treinar é um presente que você dá ao seu futuro.',
+  'Resultados não mentem. Desculpas não treinam.',
+  'Cada dia é uma nova chance de ser melhor.',
+  'Seu shape é construído fora da zona de conforto.',
+  'Quem treina hoje, descansa com orgulho amanhã.',
+  'Foco, fé e ferro.',
+  'Um treino ruim ainda é melhor que nenhum.',
+  'Você já chegou até aqui. Não para agora.',
+]
 
-const QUOTES: { text: string; photo: string }[] = [
-  { text: 'Consistência bate motivação todo dia.',                                         photo: '1571019613454-1cb2f99b2d8b' },
-  { text: 'Seu único concorrente é quem você era ontem.',                                  photo: '1534438327276-14e5300c3a48' },
-  { text: 'Progresso, não perfeição.',                                                     photo: '1517836357463-d25dfeac3438' },
-  { text: 'Todo grande shape começou com o primeiro treino.',                              photo: '1526506118085-60ce8714f8c5' },
-  { text: 'Dor de hoje, resultado de amanhã.',                                             photo: '1581009146145-b5ef050c2e1e' },
-  { text: 'Disciplina é a ponte entre metas e conquistas.',                                photo: '1549060279-7e168fcee0c2' },
-  { text: 'O corpo alcança o que a mente acredita.',                                       photo: '1541534741688-6078c6bfb5c5' },
-  { text: 'Cada repetição te aproxima da melhor versão de você.',                          photo: '1574680096145-d05b474e2155' },
-  { text: 'Não pare quando estiver cansado. Pare quando terminar.',                        photo: '1552674605-db5fecabfe68' },
-  { text: 'Força não vem do que você consegue fazer. Vem de superar o que achava impossível.', photo: '1506629082955-511b1aa562c8' },
-  { text: 'Comece devagar. Só não pare.',                                                  photo: '1571019613454-1cb2f99b2d8b' },
-  { text: 'O shape dos seus sonhos exige o esforço que outros evitam.',                    photo: '1534438327276-14e5300c3a48' },
-  { text: 'Treinar é um presente que você dá ao seu futuro.',                              photo: '1517836357463-d25dfeac3438' },
-  { text: 'Resultados não mentem. Desculpas não treinam.',                                 photo: '1526506118085-60ce8714f8c5' },
-  { text: 'Cada dia é uma nova chance de ser melhor.',                                     photo: '1581009146145-b5ef050c2e1e' },
-  { text: 'Seu shape é construído fora da zona de conforto.',                              photo: '1549060279-7e168fcee0c2' },
-  { text: 'Quem treina hoje, descansa com orgulho amanhã.',                                photo: '1541534741688-6078c6bfb5c5' },
-  { text: 'Foco, fé e ferro.',                                                             photo: '1574680096145-d05b474e2155' },
-  { text: 'Um treino ruim ainda é melhor que nenhum.',                                     photo: '1552674605-db5fecabfe68' },
-  { text: 'Você já chegou até aqui. Não para agora.',                                      photo: '1506629082955-511b1aa562c8' },
+const QUOTE_GRADIENTS: [string, string][] = [
+  ['#0D1B0D', '#1B3A1B'],
+  ['#0D1520', '#0A2540'],
+  ['#1A0D00', '#3A1A00'],
+  ['#0D0D1A', '#1A1A3A'],
+  ['#1A0010', '#3A0020'],
 ]
 
 function getGreeting() {
@@ -59,37 +65,35 @@ function getGreeting() {
 function getDailyQuote() {
   const now = new Date()
   const dayOfYear = Math.floor((now.getTime() - new Date(now.getFullYear(), 0, 0).getTime()) / 86_400_000)
-  return QUOTES[dayOfYear % QUOTES.length]
+  const text = QUOTES[dayOfYear % QUOTES.length]
+  const gradient = QUOTE_GRADIENTS[dayOfYear % QUOTE_GRADIENTS.length]
+  return { text, gradient }
 }
 
 function DailyQuoteCard() {
-  const { text, photo } = getDailyQuote()
-  const uri = `${UNSPLASH_BASE}-${photo}?auto=format&fit=crop&w=800&q=80`
+  const { text, gradient } = getDailyQuote()
 
   function handleShare() {
     Share.share({ message: `"${text}" — ShapeAI` })
   }
 
   return (
-    <ImageBackground
-      source={{ uri }}
+    <LinearGradient
+      colors={[gradient[0], gradient[1], '#0A0A0A']}
+      start={{ x: 0, y: 0 }}
+      end={{ x: 1, y: 1 }}
       style={qStyles.card}
-      imageStyle={qStyles.image}
     >
-      <LinearGradient
-        colors={['transparent', 'rgba(0,0,0,0.55)', 'rgba(0,0,0,0.92)']}
-        style={qStyles.overlay}
-      >
-        <Text style={qStyles.quoteText}>{text}</Text>
-        <View style={qStyles.footer}>
-          <Text style={qStyles.label}>Motivação</Text>
-          <TouchableOpacity style={qStyles.shareBtn} onPress={handleShare}>
-            <Ionicons name="share-outline" size={13} color="#aaa" />
-            <Text style={qStyles.shareBtnText}>Compartilhar</Text>
-          </TouchableOpacity>
-        </View>
-      </LinearGradient>
-    </ImageBackground>
+      <Text style={qStyles.quoteChar}>"</Text>
+      <Text style={qStyles.quoteText}>{text}</Text>
+      <View style={qStyles.footer}>
+        <Text style={qStyles.label}>Motivação do dia</Text>
+        <TouchableOpacity style={qStyles.shareBtn} onPress={handleShare}>
+          <Ionicons name="share-outline" size={13} color="#aaa" />
+          <Text style={qStyles.shareBtnText}>Compartilhar</Text>
+        </TouchableOpacity>
+      </View>
+    </LinearGradient>
   )
 }
 
@@ -482,6 +486,22 @@ export default function HomeScreen() {
         </View>
       )}
 
+      {/* ── Atalho Nutrição ── */}
+      <TouchableOpacity
+        style={styles.nutritionShortcut}
+        onPress={() => router.push('/(app)/meal-plan' as never)}
+        activeOpacity={0.85}
+      >
+        <View style={styles.nutritionIcon}>
+          <Ionicons name="restaurant-outline" size={20} color="#4CAF50" />
+        </View>
+        <View style={styles.nutritionText}>
+          <Text style={styles.nutritionTitle}>Plano Alimentar</Text>
+          <Text style={styles.nutritionSub}>5 refeições personalizadas · IA</Text>
+        </View>
+        <Ionicons name="chevron-forward" size={16} color="#333" />
+      </TouchableOpacity>
+
       <DailyQuoteCard />
     </ScrollView>
 
@@ -760,45 +780,53 @@ const styles = StyleSheet.create({
 
   headerRight: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   gearBtn: { padding: 4 },
+
+  nutritionShortcut: {
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    backgroundColor: '#111', borderRadius: 16,
+    padding: 16, borderWidth: 1, borderColor: '#1E1E1E',
+  },
+  nutritionIcon: {
+    width: 40, height: 40, borderRadius: 12,
+    backgroundColor: '#0E1E0E', borderWidth: 1, borderColor: '#254025',
+    alignItems: 'center', justifyContent: 'center',
+  },
+  nutritionText: { flex: 1 },
+  nutritionTitle: { color: '#fff', fontSize: 15, fontWeight: '700' },
+  nutritionSub: { color: '#555', fontSize: 12, marginTop: 2 },
 })
 
 const qStyles = StyleSheet.create({
   card: {
     borderRadius: 18,
     overflow: 'hidden',
-    height: 220,
-  },
-  image: {
-    borderRadius: 18,
-  },
-  overlay: {
-    flex: 1,
-    justifyContent: 'flex-end',
     padding: 20,
-    gap: 8,
+    gap: 10,
+    minHeight: 160,
+    justifyContent: 'flex-end',
   },
   quoteChar: {
-    color: 'rgba(255,255,255,0.25)',
-    fontSize: 44,
+    color: 'rgba(255,255,255,0.2)',
+    fontSize: 52,
     fontWeight: '900',
-    lineHeight: 36,
-    marginBottom: -4,
+    lineHeight: 40,
+    marginBottom: -8,
   },
   quoteText: {
     color: '#fff',
-    fontSize: 15,
-    lineHeight: 23,
+    fontSize: 16,
+    lineHeight: 24,
     fontStyle: 'italic',
-    fontWeight: '500',
+    fontWeight: '600',
   },
   footer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginTop: 6,
+    marginTop: 4,
   },
   label: {
-    color: 'rgba(255,255,255,0.35)',
+    color: 'rgba(255,255,255,0.3)',
     fontSize: 10,
     fontWeight: '700',
     textTransform: 'uppercase',
@@ -811,7 +839,7 @@ const qStyles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 5,
     borderRadius: 8,
-    backgroundColor: 'rgba(255,255,255,0.1)',
+    backgroundColor: 'rgba(255,255,255,0.08)',
   },
   shareBtnText: {
     color: '#aaa',

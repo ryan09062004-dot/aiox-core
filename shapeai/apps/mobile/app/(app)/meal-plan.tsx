@@ -81,33 +81,14 @@ export default function MealPlanScreen() {
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    async function init() {
-      setLoading(true)
-      try {
-        const existing = await getLatestMealPlan()
-        setPlan(existing)
-      } catch (err: unknown) {
-        const e = err as Error
-        if (e.message.includes('NOT_FOUND') || e.message.includes('404')) {
-          try {
-            const newPlan = await generateMealPlan()
-            setPlan(newPlan)
-          } catch (genErr: unknown) {
-            const ge = genErr as Error
-            if (ge.message === 'SUBSCRIPTION_REQUIRED' || ge.message.includes('402')) {
-              router.push('/(app)/paywall')
-              return
-            }
-            setError(ge.message ?? 'Erro ao gerar plano alimentar.')
-          }
-        } else {
-          setError(e.message)
+    getLatestMealPlan()
+      .then(setPlan)
+      .catch((err: Error) => {
+        if (!err.message.includes('NOT_FOUND') && !err.message.includes('404')) {
+          setError(err.message)
         }
-      } finally {
-        setLoading(false)
-      }
-    }
-    init()
+      })
+      .finally(() => setLoading(false))
   }, [])
 
   const handleGenerate = useCallback(async () => {
@@ -189,8 +170,14 @@ export default function MealPlanScreen() {
       ) : (
         <View style={styles.center}>
           <Ionicons name="restaurant-outline" size={56} color="#2a2a2a" />
-          <Text style={styles.emptyTitle}>Erro ao gerar plano</Text>
-          <Text style={styles.errorText}>{error}</Text>
+          {error ? (
+            <Text style={styles.errorText}>{error}</Text>
+          ) : (
+            <>
+              <Text style={styles.emptyTitle}>Sem plano alimentar</Text>
+              <Text style={styles.emptyText}>Gere seu plano com 5 refeições diárias personalizadas.</Text>
+            </>
+          )}
           <TouchableOpacity
             style={styles.generateBtn}
             onPress={handleGenerate}
@@ -199,7 +186,7 @@ export default function MealPlanScreen() {
           >
             {generating
               ? <ActivityIndicator size="small" color="#0A0A0A" />
-              : <Text style={styles.generateBtnText}>Tentar novamente</Text>
+              : <Text style={styles.generateBtnText}>{error ? 'Tentar novamente' : 'Gerar plano alimentar'}</Text>
             }
           </TouchableOpacity>
         </View>
@@ -278,6 +265,7 @@ const styles = StyleSheet.create({
   ingredientText: { flex: 1, color: '#888', fontSize: 13, lineHeight: 20 },
 
   emptyTitle: { color: '#fff', fontSize: 20, fontWeight: '700', textAlign: 'center' },
+  emptyText: { color: '#666', fontSize: 14, textAlign: 'center', lineHeight: 22, maxWidth: 280 },
   generateBtn: {
     backgroundColor: '#4CAF50', borderRadius: 14,
     paddingVertical: 14, paddingHorizontal: 28,

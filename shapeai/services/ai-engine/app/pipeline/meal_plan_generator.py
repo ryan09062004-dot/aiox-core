@@ -1,72 +1,203 @@
-import json
 import logging
-import os
-
-import anthropic
 
 logger = logging.getLogger(__name__)
-client = anthropic.Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
 
-_GOAL_LABELS = {
-    "hypertrophy": "hipertrofia muscular",
-    "fat_loss": "emagrecimento e definição",
-    "conditioning": "condicionamento físico",
-    "maintenance": "manutenção do peso",
+# ── Templates por objetivo (base ~2200 kcal/dia) ─────────────────────────────
+
+_TEMPLATES = {
+    "hypertrophy": [
+        {
+            "meal_type": "Café da Manhã",
+            "name": "Ovos mexidos com aveia e banana",
+            "description": "Proteína + carboidratos complexos para iniciar o dia com energia",
+            "base_calories": 520, "base_protein": 32, "base_carbs": 60, "base_fat": 14,
+            "ingredients": ["3 ovos inteiros", "60g de aveia em flocos", "1 banana média", "1 colher de sopa de azeite", "canela a gosto"],
+        },
+        {
+            "meal_type": "Lanche da Manhã",
+            "name": "Shake de whey com frutas",
+            "description": "Rápido e proteico para manter o anabolismo entre refeições",
+            "base_calories": 310, "base_protein": 28, "base_carbs": 38, "base_fat": 4,
+            "ingredients": ["1 scoop de whey protein (30g)", "200ml de leite desnatado", "1 maçã", "gelo a gosto"],
+        },
+        {
+            "meal_type": "Almoço",
+            "name": "Frango grelhado com arroz e feijão",
+            "description": "Refeição completa com proteína magra, carboidrato e leguminosas",
+            "base_calories": 680, "base_protein": 48, "base_carbs": 80, "base_fat": 12,
+            "ingredients": ["180g de peito de frango", "100g de arroz branco cozido", "80g de feijão carioca cozido", "salada de folhas verdes à vontade", "1 colher de sopa de azeite"],
+        },
+        {
+            "meal_type": "Lanche da Tarde",
+            "name": "Iogurte grego com granola",
+            "description": "Proteína de absorção lenta com carboidratos para o treino",
+            "base_calories": 290, "base_protein": 18, "base_carbs": 35, "base_fat": 7,
+            "ingredients": ["200g de iogurte grego natural", "30g de granola sem açúcar", "1 colher de sopa de mel"],
+        },
+        {
+            "meal_type": "Jantar",
+            "name": "Carne moída com batata-doce e legumes",
+            "description": "Proteína completa com carboidrato de baixo IG para recuperação noturna",
+            "base_calories": 560, "base_protein": 38, "base_carbs": 55, "base_fat": 16,
+            "ingredients": ["150g de carne moída patinho", "150g de batata-doce cozida", "brócolis e cenoura refogados à vontade", "temperos naturais"],
+        },
+    ],
+    "fat_loss": [
+        {
+            "meal_type": "Café da Manhã",
+            "name": "Omelete com abacate e café",
+            "description": "Proteína + gordura saudável para saciedade e foco matinal",
+            "base_calories": 380, "base_protein": 26, "base_carbs": 8, "base_fat": 26,
+            "ingredients": ["3 ovos inteiros", "1/4 de abacate", "tomate e cebola a gosto", "café preto sem açúcar"],
+        },
+        {
+            "meal_type": "Lanche da Manhã",
+            "name": "Castanhas e café preto",
+            "description": "Lanche leve rico em gorduras boas para controle do apetite",
+            "base_calories": 190, "base_protein": 6, "base_carbs": 8, "base_fat": 16,
+            "ingredients": ["30g de mix de castanhas (castanha-do-pará, amêndoas, nozes)", "café preto sem açúcar"],
+        },
+        {
+            "meal_type": "Almoço",
+            "name": "Frango grelhado com salada e ovo",
+            "description": "Alta proteína, baixo carboidrato para acelerar a queima de gordura",
+            "base_calories": 520, "base_protein": 52, "base_carbs": 18, "base_fat": 22,
+            "ingredients": ["200g de peito de frango grelhado", "2 ovos cozidos", "salada verde variada (alface, rúcula, agrião)", "tomate cereja", "1 colher de sopa de azeite e limão"],
+        },
+        {
+            "meal_type": "Lanche da Tarde",
+            "name": "Iogurte natural com whey",
+            "description": "Proteína com baixo carboidrato para controle calórico",
+            "base_calories": 230, "base_protein": 28, "base_carbs": 14, "base_fat": 5,
+            "ingredients": ["150g de iogurte natural desnatado", "1/2 scoop de whey protein (15g)", "canela e adoçante a gosto"],
+        },
+        {
+            "meal_type": "Jantar",
+            "name": "Peixe grelhado com legumes no vapor",
+            "description": "Refeição leve e proteica para fechar o dia sem comprometer o déficit",
+            "base_calories": 360, "base_protein": 40, "base_carbs": 22, "base_fat": 10,
+            "ingredients": ["200g de tilápia ou atum grelhado", "abobrinha, brócolis e couve-flor cozidos no vapor", "limão e ervas a gosto", "1 colher de chá de azeite"],
+        },
+    ],
+    "conditioning": [
+        {
+            "meal_type": "Café da Manhã",
+            "name": "Vitamina de banana com aveia e whey",
+            "description": "Energia rápida e proteína para suportar treinos intensos",
+            "base_calories": 480, "base_protein": 30, "base_carbs": 65, "base_fat": 8,
+            "ingredients": ["1 banana", "50g de aveia", "1 scoop whey protein (30g)", "200ml de leite desnatado", "1 colher de mel"],
+        },
+        {
+            "meal_type": "Lanche da Manhã",
+            "name": "Fruta com pasta de amendoim",
+            "description": "Energia sustentada com gordura boa para treinos longos",
+            "base_calories": 260, "base_protein": 8, "base_carbs": 32, "base_fat": 12,
+            "ingredients": ["1 maçã ou pera", "1 colher de sopa de pasta de amendoim integral (30g)"],
+        },
+        {
+            "meal_type": "Almoço",
+            "name": "Frango com macarrão integral e legumes",
+            "description": "Carboidrato complexo + proteína para recuperação e energia",
+            "base_calories": 620, "base_protein": 42, "base_carbs": 72, "base_fat": 12,
+            "ingredients": ["160g de frango grelhado", "80g de macarrão integral cozido", "molho de tomate natural", "espinafre refogado", "azeite"],
+        },
+        {
+            "meal_type": "Lanche da Tarde",
+            "name": "Torrada integral com ricota",
+            "description": "Lanche prático e equilibrado para manter energia antes do treino",
+            "base_calories": 240, "base_protein": 14, "base_carbs": 28, "base_fat": 7,
+            "ingredients": ["2 fatias de pão integral", "3 colheres de sopa de ricota", "tomate e orégano a gosto"],
+        },
+        {
+            "meal_type": "Jantar",
+            "name": "Salmão com quinoa e brócolis",
+            "description": "Ômega-3 + proteína completa + carboidrato nutritivo para recuperação",
+            "base_calories": 520, "base_protein": 38, "base_carbs": 42, "base_fat": 20,
+            "ingredients": ["160g de salmão grelhado", "80g de quinoa cozida", "brócolis cozido no vapor", "limão e ervas finas", "1 colher de azeite"],
+        },
+    ],
+    "maintenance": [
+        {
+            "meal_type": "Café da Manhã",
+            "name": "Tapioca com ovo e queijo",
+            "description": "Café da manhã clássico e equilibrado com proteína e energia",
+            "base_calories": 420, "base_protein": 24, "base_carbs": 48, "base_fat": 14,
+            "ingredients": ["2 colheres de sopa de goma de tapioca (40g)", "2 ovos mexidos", "30g de queijo minas", "café ou suco natural"],
+        },
+        {
+            "meal_type": "Lanche da Manhã",
+            "name": "Frutas com iogurte",
+            "description": "Lanche leve e nutritivo entre refeições",
+            "base_calories": 210, "base_protein": 10, "base_carbs": 32, "base_fat": 4,
+            "ingredients": ["200g de iogurte natural", "1 banana ou maçã", "1 colher de mel"],
+        },
+        {
+            "meal_type": "Almoço",
+            "name": "Frango ou carne com arroz, feijão e salada",
+            "description": "O prato brasileiro completo para manutenção saudável",
+            "base_calories": 650, "base_protein": 40, "base_carbs": 72, "base_fat": 14,
+            "ingredients": ["150g de frango ou patinho grelhado", "100g arroz branco", "80g feijão cozido", "salada mista à vontade", "azeite e limão"],
+        },
+        {
+            "meal_type": "Lanche da Tarde",
+            "name": "Pão integral com pasta de atum",
+            "description": "Proteína e carboidrato complexo para tarde produtiva",
+            "base_calories": 270, "base_protein": 20, "base_carbs": 28, "base_fat": 8,
+            "ingredients": ["2 fatias de pão integral", "1 lata de atum em água (120g)", "1 colher de maionese light", "tomate em rodelas"],
+        },
+        {
+            "meal_type": "Jantar",
+            "name": "Omelete misto com batata-doce",
+            "description": "Refeição leve e completa para o fim do dia",
+            "base_calories": 450, "base_protein": 30, "base_carbs": 42, "base_fat": 16,
+            "ingredients": ["3 ovos", "50g de queijo minas picado", "tomate, cebola e pimentão a gosto", "120g de batata-doce cozida", "temperos naturais"],
+        },
+    ],
 }
 
-SYSTEM_PROMPT = (
-    "Você é um nutricionista esportivo especializado em nutrição para atletas.\n"
-    "Gere um plano alimentar diário com exatamente 5 refeições personalizadas para o objetivo e perfil do usuário.\n\n"
-    "Estrutura JSON obrigatória:\n"
-    '{ "meals": [ MealItem, MealItem, MealItem, MealItem, MealItem ] }\n\n'
-    "MealItem:\n"
-    '{ "meal_type": <"Café da Manhã"|"Lanche da Manhã"|"Almoço"|"Lanche da Tarde"|"Jantar">,\n'
-    '  "name": <string — nome do prato>,\n'
-    '  "description": <string — descrição curta e apetitosa, max 80 chars>,\n'
-    '  "calories_approx": <number>,\n'
-    '  "protein_g": <number>,\n'
-    '  "carbs_g": <number>,\n'
-    '  "fats_g": <number>,\n'
-    '  "ingredients": <string[] — lista de ingredientes com quantidades> }\n\n'
-    "Regras:\n"
-    "- Exatamente 5 refeições na ordem: Café da Manhã, Lanche da Manhã, Almoço, Lanche da Tarde, Jantar\n"
-    "- Adaptar calorias e macros ao objetivo (hipertrofia = mais proteína/carbs; emagrecimento = déficit calórico; condicionamento = equilíbrio)\n"
-    "- Usar alimentos acessíveis no Brasil\n"
-    "- Receitas práticas e saborosas, não apenas frango com batata doce\n"
-    "- Variar as fontes de proteína (frango, peixe, ovo, carne, whey)\n"
-    "- Ingredientes com quantidades específicas em gramas ou medidas caseiras\n"
-    "- Responda SOMENTE com JSON válido, sem markdown."
-)
+
+def _calc_scale(goal: str, height_cm: float, weight_kg: float, sex: str) -> float:
+    """Calcula fator de escala baseado no TDEE estimado."""
+    age = 25
+    if sex.upper() == "M":
+        bmr = 10 * weight_kg + 6.25 * height_cm - 5 * age + 5
+    else:
+        bmr = 10 * weight_kg + 6.25 * height_cm - 5 * age - 161
+
+    tdee = bmr * 1.55
+
+    target = {
+        "fat_loss": tdee * 0.82,
+        "hypertrophy": tdee * 1.12,
+        "conditioning": tdee * 1.0,
+        "maintenance": tdee * 1.0,
+    }.get(goal, tdee)
+
+    base_calories = 2200.0
+    return round(target / base_calories, 3)
 
 
 def generate_meal_plan(profile: dict) -> list[dict]:
-    """Generate a daily meal plan personalized by goal, height, weight and sex."""
-    goal_raw = profile.get("goal", "hypertrophy")
-    goal_label = _GOAL_LABELS.get(goal_raw, goal_raw)
-    sex_label = "homem" if profile.get("sex", "M").upper() == "M" else "mulher"
-    height = profile.get("height_cm", "?")
-    weight = profile.get("weight_kg", "?")
+    goal = profile.get("goal", "maintenance")
+    height = float(profile.get("height_cm") or 170)
+    weight = float(profile.get("weight_kg") or 75)
+    sex = str(profile.get("sex", "M"))
 
-    user_prompt = (
-        f"Perfil: {sex_label}, {height}cm, {weight}kg\n"
-        f"Objetivo: {goal_label}\n\n"
-        "Gere o plano alimentar completo do dia com 5 refeições adequadas a este perfil e objetivo."
-    )
+    template = _TEMPLATES.get(goal, _TEMPLATES["maintenance"])
+    scale = _calc_scale(goal, height, weight, sex)
 
-    try:
-        response = client.messages.create(
-            model="claude-sonnet-4-6",
-            max_tokens=4096,
-            system=[{"type": "text", "text": SYSTEM_PROMPT, "cache_control": {"type": "ephemeral"}}],
-            messages=[{"role": "user", "content": user_prompt}],
-        )
-        raw = response.content[0].text.strip()
-        raw = raw.removeprefix("```json").removeprefix("```").removesuffix("```").strip()
-        data = json.loads(raw)
-        meals = data.get("meals", [])
-        if not isinstance(meals, list) or len(meals) != 5:
-            raise ValueError(f"Expected 5 meals, got {len(meals) if isinstance(meals, list) else type(meals)}")
-        return meals
-    except (anthropic.APIError, json.JSONDecodeError, ValueError, Exception) as exc:
-        logger.error("[meal_plan_generator] Failed to generate meal plan: %s: %s", type(exc).__name__, exc)
-        raise
+    meals = []
+    for meal in template:
+        meals.append({
+            "meal_type": meal["meal_type"],
+            "name": meal["name"],
+            "description": meal["description"],
+            "calories_approx": round(meal["base_calories"] * scale),
+            "protein_g": round(meal["base_protein"] * scale),
+            "carbs_g": round(meal["base_carbs"] * scale),
+            "fats_g": round(meal["base_fat"] * scale),
+            "ingredients": meal["ingredients"],
+        })
+
+    logger.info("[meal_plan_generator] Generated template plan for goal=%s scale=%.2f", goal, scale)
+    return meals

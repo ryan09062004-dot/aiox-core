@@ -14,22 +14,20 @@ SYSTEM_PROMPT = (
     "Estrutura JSON obrigatória:\n"
     '{ "weeks": [ { "week_number": 1, "sessions": [ WorkoutSession ] } ] }\n\n'
     "WorkoutSession:\n"
-    '{ "day": <"Segunda"|"Terça"|"Quarta"|"Quinta"|"Sexta"|"Sábado">,\n'
+    '{ "day": <"Segunda"|"Terça"|"Quarta"|"Quinta"|"Sexta">,\n'
     '  "focus": <nome do treino, ex: "Peito + Tríceps">,\n'
     '  "muscle_groups": <string[]>,\n'
     '  "exercises": <Exercise[]> }\n\n'
     "Exercise:\n"
-    '{ "name": <string>, "muscle_group": <string>, "sets": <number>, "reps": <string>, "rest_seconds": <number>, "note": <string|null>,\n'
-    '  "home_alternative": { "name": <string>, "muscle_group": <string>, "sets": <number>, "reps": <string>, "rest_seconds": <number>, "note": <string|null> } | null }\n\n'
+    '{ "name": <string>, "muscle_group": <string>, "sets": <number>, "reps": <string>, "rest_seconds": <number>, "note": <string|null> }\n\n'
     "Regras:\n"
     "- 5 sessões por semana: Segunda, Terça, Quarta, Quinta e Sexta\n"
     "- 5 a 6 exercícios por sessão\n"
     "- Use splits: Segunda='Peito + Tríceps' | Terça='Bíceps + Costas' | Quarta='Pernas' | Quinta='Ombros + Trapézio'\n"
-    "- Sexta: dedique ao grupo muscular com MENOR score na análise (ex: se glúteos=28, Sexta='Glúteos + Posterior'). Use o score mais baixo dos fornecidos para decidir.\n"
+    "- Sexta: dedique ao grupo muscular com MENOR score na análise. Use o score mais baixo dos fornecidos para decidir.\n"
     "- Semana 1: volume moderado | Semanas 2-3: volume crescente | Semana 4: deload\n"
-    "- Variação obrigatória: troque pelo menos 2 exercícios por sessão a cada semana (ex: Semana 1 usa Supino reto, Semana 2 substitui por Supino inclinado). Nunca repita a lista idêntica de exercícios entre semanas.\n"
+    "- Variação obrigatória: troque pelo menos 2 exercícios por sessão a cada semana. Nunca repita a lista idêntica entre semanas.\n"
     "- Priorize grupos com scores mais baixos\n"
-    "- home_alternative: versão do exercício para fazer em casa usando APENAS peso corporal, cadeira, elástico, garrafa com água/areia ou mesa. Mesmo grupo muscular. Se não existir equivalente razoável, use null.\n"
     "- Responda SOMENTE com JSON válido, sem markdown."
 )
 
@@ -213,7 +211,7 @@ def generate_workout_plan(scores: dict, body_composition: dict, profile: dict) -
     try:
         response = client.messages.create(
             model="claude-sonnet-4-6",
-            max_tokens=32768,
+            max_tokens=8192,
             system=[{"type": "text", "text": SYSTEM_PROMPT, "cache_control": {"type": "ephemeral"}}],
             messages=[{"role": "user", "content": user_prompt}],
         )

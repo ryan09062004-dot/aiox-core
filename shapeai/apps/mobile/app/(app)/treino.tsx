@@ -14,15 +14,16 @@ import { getUserProfile } from '../../src/services/profile.service'
 import WorkoutDayCard from '../../src/components/workout/WorkoutDayCard'
 import { WorkoutShareCard } from '../../src/components/workout/WorkoutShareCard'
 import { PHOTO_TIP_STORAGE_KEY } from './photo-tip'
+import { STANDARD_HOME_PLAN } from '../../src/data/home-workout'
 
 function storageKey(id: string) { return `workout_progress_${id}` }
 function modeKey(id: string) { return `workout_mode_${id}` }
 function applyWorkoutMode(sessions: WorkoutSession[], mode: 'gym' | 'home'): WorkoutSession[] {
   if (mode === 'gym') return sessions
-  return sessions.map(s => ({
-    ...s,
-    exercises: s.exercises.map(ex => ex.home_alternative ? { ...ex, ...ex.home_alternative } : ex),
-  }))
+  return sessions.map(gymSession => {
+    const home = STANDARD_HOME_PLAN.find(h => h.day === gymSession.day)
+    return home ?? gymSession
+  })
 }
 function estimateDuration(exercises: WorkoutSession['exercises']) {
   return exercises.reduce((sum, ex) => sum + (ex.sets * 2), 0)

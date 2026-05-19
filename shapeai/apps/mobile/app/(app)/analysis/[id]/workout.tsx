@@ -19,6 +19,7 @@ import {
 import { getAnalysisResult } from '../../../../src/services/analysis.service'
 import { getUserProfile } from '../../../../src/services/profile.service'
 import WorkoutDayCard from '../../../../src/components/workout/WorkoutDayCard'
+import { STANDARD_HOME_PLAN } from '../../../../src/data/home-workout'
 
 function storageKey(analysisId: string) {
   return `workout_progress_${analysisId}`
@@ -34,12 +35,10 @@ function sessionKey(weekNumber: number, day: string) {
 
 function applyWorkoutMode(sessions: WorkoutSession[], mode: 'gym' | 'home'): WorkoutSession[] {
   if (mode === 'gym') return sessions
-  return sessions.map((session) => ({
-    ...session,
-    exercises: session.exercises.map((ex) =>
-      ex.home_alternative ? { ...ex.home_alternative } : ex
-    ),
-  }))
+  return sessions.map(gymSession => {
+    const home = STANDARD_HOME_PLAN.find(h => h.day === gymSession.day)
+    return home ?? gymSession
+  })
 }
 
 export default function WorkoutScreen() {
