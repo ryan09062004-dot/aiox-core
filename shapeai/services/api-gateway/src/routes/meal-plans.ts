@@ -33,15 +33,15 @@ export async function mealPlansRoutes(app: FastifyInstance) {
       sex: profile.biological_sex,
     })
 
-    const meals = aiResponse.data.meals
+    const meals: unknown[] = aiResponse.data.meals
 
-    const { rows: inserted } = await pool.query(
+    const { rows: inserted } = await pool.query<{ id: string; generated_at: string }>(
       `INSERT INTO meal_plans (user_id, goal, height_cm, weight_kg, sex, meals)
        VALUES ($1, $2, $3, $4, $5, $6)
-       RETURNING *`,
+       RETURNING id, goal, height_cm, weight_kg, sex, generated_at`,
       [userId, profile.primary_goal, Math.round(Number(profile.height_cm)), Math.round(Number(profile.weight_kg)), profile.biological_sex, JSON.stringify(meals)]
     )
 
-    return reply.status(201).send(inserted[0])
+    return reply.status(201).send({ ...inserted[0], user_id: userId, meals })
   })
 }
