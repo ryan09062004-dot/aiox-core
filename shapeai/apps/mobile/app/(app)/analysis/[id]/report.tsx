@@ -13,6 +13,7 @@ import {
 } from 'react-native'
 import * as FileSystem from 'expo-file-system'
 import * as MediaLibrary from 'expo-media-library'
+import { LinearGradient } from 'expo-linear-gradient'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useLocalSearchParams, router } from 'expo-router'
 import Svg, { Circle, Text as SvgText } from 'react-native-svg'
@@ -61,15 +62,23 @@ const TABS = ['Resultado', 'Insights', 'Músculos']
 
 function scoreColor(score: number) {
   if (score >= 70) return '#4CAF50'
-  if (score >= 50) return '#FF9800'
-  return '#F44336'
+  if (score >= 50) return '#FFB300'
+  if (score >= 30) return '#64B5F6'
+  return '#90CAF9'
 }
 
 function scoreLabel(score: number) {
-  if (score >= 75) return 'Acima da média'
-  if (score >= 50) return 'Na média'
-  if (score >= 30) return 'Abaixo da média'
-  return 'Bem abaixo da média'
+  if (score >= 75) return 'Shape Atlético'
+  if (score >= 50) return 'Em Boa Forma'
+  if (score >= 30) return 'Em Progresso'
+  return 'Iniciando a Jornada'
+}
+
+function scoreMotivation(score: number): string {
+  if (score >= 75) return 'Você está no nível dos atletas. Continue assim!'
+  if (score >= 50) return 'Você tem uma boa base. O shape ideal está próximo.'
+  if (score >= 30) return 'Cada treino te aproxima mais. Você está no caminho certo!'
+  return 'Toda grande transformação começa com o primeiro passo. Esse é o seu!'
 }
 
 function formatDate(iso: string) {
@@ -135,6 +144,7 @@ function HeroCard({ score, date }: { score: number; date: string }) {
         <Text style={[s.levelText, { color }]}>{scoreLabel(score)}</Text>
       </View>
       <Text style={s.heroContext}>Baseado em 9 grupos musculares</Text>
+      <Text style={s.heroMotivation}>{scoreMotivation(score)}</Text>
     </View>
   )
 }
@@ -333,39 +343,45 @@ function FutureEvolutionCard({ imageUrl, isPro }: { imageUrl: string; isPro: boo
         <Image
           source={{ uri: imageUrl }}
           style={fes.image}
-          blurRadius={isPro ? 0 : 28}
-          resizeMode="contain"
+          blurRadius={isPro ? 0 : 30}
+          resizeMode="cover"
         />
-        <View style={fes.labelOverlay}>
-          <Text style={fes.label}>SEU SHAPE DOS SONHOS</Text>
-        </View>
         {isPro && (
-          <View style={fes.expandBtn}>
-            <Text style={fes.expandBtnText}>⤢</Text>
-          </View>
+          <>
+            <LinearGradient
+              colors={['transparent', 'rgba(0,0,0,0.88)']}
+              style={fes.gradient}
+            >
+              <Text style={fes.gradientTag}>EVOLUÇÃO DE 12 SEMANAS</Text>
+              <Text style={fes.gradientSub}>Com consistência, este é seu potencial real</Text>
+            </LinearGradient>
+            <View style={fes.expandBtn}>
+              <Text style={fes.expandBtnText}>⤢</Text>
+            </View>
+          </>
         )}
         {!isPro && (
           <View style={fes.lockOverlay}>
-            <Text style={fes.lockIcon}>🔒</Text>
-            <Text style={fes.lockTitle}>Ver shape dos sonhos</Text>
-            <Text style={fes.lockSub}>Descubra como seu corpo vai ficar com treino e alimentação consistentes</Text>
+            <Text style={fes.lockIcon}>✨</Text>
+            <Text style={fes.lockTitle}>Evolução de 12 Semanas</Text>
+            <Text style={fes.lockSub}>Veja como você pode ficar com treino e alimentação consistentes</Text>
             <TouchableOpacity style={fes.upgradeBtn} onPress={() => router.push('/(app)/paywall')}>
-              <Text style={fes.upgradeBtnText}>Assinar Pro</Text>
+              <Text style={fes.upgradeBtnText}>Revelar agora</Text>
             </TouchableOpacity>
           </View>
         )}
       </TouchableOpacity>
       {isPro && (
-        <Text style={fes.disclaimer}>
-          Visualização gerada por IA. Resultados reais dependem de consistência, alimentação e genética individual.
-        </Text>
-      )}
-      {isPro && (
-        <ImageViewerModal
-          visible={modalVisible}
-          imageUrl={imageUrl}
-          onClose={() => setModalVisible(false)}
-        />
+        <>
+          <Text style={fes.disclaimer}>
+            Gerado por IA com base na sua análise. Resultados reais dependem de consistência, alimentação e genética.
+          </Text>
+          <ImageViewerModal
+            visible={modalVisible}
+            imageUrl={imageUrl}
+            onClose={() => setModalVisible(false)}
+          />
+        </>
       )}
     </View>
   )
@@ -528,6 +544,7 @@ const s = StyleSheet.create({
   levelDot: { width: 6, height: 6, borderRadius: 3 },
   levelText: { fontSize: 13, fontWeight: '600' },
   heroContext: { color: '#333', fontSize: 12, letterSpacing: 0.3 },
+  heroMotivation: { color: '#555', fontSize: 12, textAlign: 'center', lineHeight: 18, paddingHorizontal: 12 },
 
   // Assessment
   assessmentCard: {
@@ -677,31 +694,38 @@ const fes = StyleSheet.create({
     overflow: 'hidden',
     marginBottom: 12,
     borderWidth: 1,
-    borderColor: '#1E3A1E',
+    borderColor: '#2A4A2A',
   },
   imageWrapper: {
     width: '100%',
-    aspectRatio: 3 / 4,
+    aspectRatio: 2 / 3,
     position: 'relative',
   },
   image: {
     width: '100%',
     height: '100%',
   },
-  labelOverlay: {
+  gradient: {
     position: 'absolute',
-    top: 12,
-    left: 12,
-    backgroundColor: 'rgba(0,0,0,0.55)',
-    borderRadius: 8,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
+    bottom: 0,
+    left: 0,
+    right: 0,
+    paddingHorizontal: 16,
+    paddingBottom: 20,
+    paddingTop: 72,
+    gap: 5,
   },
-  label: {
+  gradientTag: {
     color: '#4CAF50',
     fontSize: 10,
     fontWeight: '700',
     letterSpacing: 1.5,
+  },
+  gradientSub: {
+    color: 'rgba(255,255,255,0.88)',
+    fontSize: 16,
+    fontWeight: '600',
+    lineHeight: 22,
   },
   lockOverlay: {
     position: 'absolute',
@@ -709,16 +733,16 @@ const fes = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: 'rgba(10, 10, 10, 0.55)',
+    backgroundColor: 'rgba(10, 10, 10, 0.62)',
     alignItems: 'center',
     justifyContent: 'center',
-    padding: 24,
+    padding: 28,
     gap: 10,
   },
-  lockIcon: { fontSize: 32 },
+  lockIcon: { fontSize: 36 },
   lockTitle: {
     color: '#fff',
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: '700',
     textAlign: 'center',
   },
@@ -729,11 +753,11 @@ const fes = StyleSheet.create({
     lineHeight: 20,
   },
   upgradeBtn: {
-    marginTop: 6,
+    marginTop: 8,
     backgroundColor: '#4CAF50',
-    borderRadius: 12,
-    paddingHorizontal: 28,
-    paddingVertical: 12,
+    borderRadius: 14,
+    paddingHorizontal: 32,
+    paddingVertical: 13,
   },
   upgradeBtnText: {
     color: '#fff',
