@@ -227,6 +227,21 @@ export default function TreinoTab() {
           </View>
         </View>
 
+        <View style={styles.modeToggleContainer}>
+          <TouchableOpacity
+            style={[styles.modeBtn, workoutMode === 'gym' && styles.modeBtnActive]}
+            onPress={() => changeMode('gym')}
+          >
+            <Text style={[styles.modeBtnText, workoutMode === 'gym' && styles.modeBtnTextActive]}>Academia</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.modeBtn, workoutMode === 'home' && styles.modeBtnActive]}
+            onPress={() => changeMode('home')}
+          >
+            <Text style={[styles.modeBtnText, workoutMode === 'home' && styles.modeBtnTextActive]}>Em Casa</Text>
+          </TouchableOpacity>
+        </View>
+
         <TouchableOpacity style={styles.spotifyBtn} onPress={openSpotify} activeOpacity={0.75}>
           <FontAwesome5 name="spotify" size={26} color="#1DB954" />
           <View style={styles.spotifyTextWrap}>
@@ -256,21 +271,6 @@ export default function TreinoTab() {
             </TouchableOpacity>
           ))}
         </ScrollView>
-
-        <View style={styles.modeToggleContainer}>
-          <TouchableOpacity
-            style={[styles.modeBtn, workoutMode === 'gym' && styles.modeBtnActive]}
-            onPress={() => changeMode('gym')}
-          >
-            <Text style={[styles.modeBtnText, workoutMode === 'gym' && styles.modeBtnTextActive]}>Academia</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.modeBtn, workoutMode === 'home' && styles.modeBtnActive]}
-            onPress={() => changeMode('home')}
-          >
-            <Text style={[styles.modeBtnText, workoutMode === 'home' && styles.modeBtnTextActive]}>Em Casa</Text>
-          </TouchableOpacity>
-        </View>
 
         <View style={styles.daysCards}>
           {loadingWorkout ? (
@@ -362,7 +362,7 @@ const styles = StyleSheet.create({
   spotifyLabel: { color: '#1DB954', fontSize: 10, fontWeight: '800', letterSpacing: 1.2 },
   spotifyBtnText: { color: '#aaa', fontSize: 13 },
 
-  tabsScroll: { maxHeight: 56 },
+  tabsScroll: { maxHeight: 56, marginTop: 14 },
   tabsContent: { paddingHorizontal: 20, paddingVertical: 8, gap: 8, alignItems: 'center' },
   tab: {
     paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20,
@@ -374,9 +374,6 @@ const styles = StyleSheet.create({
 
   modeToggleContainer: {
     flexDirection: 'row',
-    marginHorizontal: 20,
-    marginTop: 10,
-    marginBottom: 2,
     backgroundColor: '#111',
     borderRadius: 12,
     borderWidth: 1,

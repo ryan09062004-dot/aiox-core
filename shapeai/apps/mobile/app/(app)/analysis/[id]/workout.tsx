@@ -152,6 +152,27 @@ export default function WorkoutScreen() {
             <View style={[styles.progressFill, { width: progressWidth }]} />
           </View>
         </View>
+
+        <View style={styles.modeToggleContainer}>
+          <TouchableOpacity
+            style={[styles.modeBtn, workoutMode === 'gym' && styles.modeBtnActive]}
+            onPress={() => changeMode('gym')}
+            activeOpacity={0.8}
+          >
+            <Text style={[styles.modeBtnText, workoutMode === 'gym' && styles.modeBtnTextActive]}>
+              Academia
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.modeBtn, workoutMode === 'home' && styles.modeBtnActive]}
+            onPress={() => changeMode('home')}
+            activeOpacity={0.8}
+          >
+            <Text style={[styles.modeBtnText, workoutMode === 'home' && styles.modeBtnTextActive]}>
+              Em Casa
+            </Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
       <ScrollView style={styles.daysScroll} contentContainerStyle={styles.daysContent}>
@@ -173,27 +194,6 @@ export default function WorkoutScreen() {
             </TouchableOpacity>
           ))}
         </ScrollView>
-
-        <View style={styles.modeToggleContainer}>
-          <TouchableOpacity
-            style={[styles.modeBtn, workoutMode === 'gym' && styles.modeBtnActive]}
-            onPress={() => changeMode('gym')}
-            activeOpacity={0.8}
-          >
-            <Text style={[styles.modeBtnText, workoutMode === 'gym' && styles.modeBtnTextActive]}>
-              Academia
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.modeBtn, workoutMode === 'home' && styles.modeBtnActive]}
-            onPress={() => changeMode('home')}
-            activeOpacity={0.8}
-          >
-            <Text style={[styles.modeBtnText, workoutMode === 'home' && styles.modeBtnTextActive]}>
-              Casa
-            </Text>
-          </TouchableOpacity>
-        </View>
 
         <View style={styles.daysCards}>
           {displaySessions.map((session, index) => (
@@ -242,7 +242,7 @@ const styles = StyleSheet.create({
 
   backBtn: { color: '#4CAF50', fontSize: 16, fontWeight: '600' },
 
-  tabsScroll: { maxHeight: 56 },
+  tabsScroll: { maxHeight: 56, marginTop: 14 },
   tabsContent: { paddingHorizontal: 20, paddingVertical: 8, gap: 8, alignItems: 'center' },
   tab: {
     paddingHorizontal: 16,
@@ -261,9 +261,6 @@ const styles = StyleSheet.create({
     backgroundColor: '#1a1a1a',
     borderRadius: 10,
     padding: 4,
-    marginHorizontal: 16,
-    marginTop: 8,
-    marginBottom: 4,
   },
   modeBtn: {
     flex: 1,
