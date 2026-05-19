@@ -11,6 +11,7 @@ import {
   listMealPlans, getMealPlanById, getLatestMealPlan, generateMealPlan,
   type MealPlanSummary,
 } from '../../src/services/meal-plan.service'
+import { getMealImage } from '../../src/constants/meal-images'
 
 const MEAL_ICONS: Record<string, string> = {
   'Café da Manhã': '☀️',
@@ -36,10 +37,15 @@ function MealCard({ meal }: { meal: MealItem }) {
   const current = allOptions[optIdx] ?? meal
   const icon = MEAL_ICONS[current.meal_type] ?? '🍴'
   const hasAlts = allOptions.length > 1
+  const localImg = getMealImage(current.name)
+  const imgSource = localImg ?? (current.image_url ? { uri: current.image_url } : null)
 
   return (
     <>
       <TouchableOpacity style={styles.mealCard} onPress={() => setDetailOpen(true)} activeOpacity={0.85}>
+        {imgSource && (
+          <Image source={imgSource} style={styles.cardImage} resizeMode="cover" />
+        )}
         <View style={styles.mealHeader}>
           <View style={styles.mealTypeRow}>
             <Text style={styles.mealIcon}>{icon}</Text>
@@ -73,8 +79,8 @@ function MealCard({ meal }: { meal: MealItem }) {
       >
         <View style={styles.modalOverlay}>
           <View style={styles.modalSheet}>
-            {current.image_url ? (
-              <Image source={{ uri: current.image_url }} style={styles.modalImage} resizeMode="cover" />
+            {imgSource ? (
+              <Image source={imgSource} style={styles.modalImage} resizeMode="cover" />
             ) : (
               <View style={styles.modalImagePlaceholder}>
                 <Text style={{ fontSize: 44 }}>{icon}</Text>
@@ -355,6 +361,13 @@ const styles = StyleSheet.create({
 
   scroll: { flex: 1 },
   scrollContent: { padding: 16, gap: 14, paddingBottom: 40 },
+
+  cardImage: {
+    width: '100%',
+    height: 160,
+    borderRadius: 12,
+    marginBottom: 12,
+  },
 
   selectorScroll: { backgroundColor: '#0A0A0A', borderBottomWidth: 1, borderBottomColor: '#1A1A1A' },
   selectorContent: { paddingHorizontal: 16, paddingVertical: 10, gap: 8, flexDirection: 'row' },
