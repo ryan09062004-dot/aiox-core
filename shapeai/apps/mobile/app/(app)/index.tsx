@@ -84,10 +84,9 @@ function DailyQuoteCard() {
       end={{ x: 1, y: 1 }}
       style={qStyles.card}
     >
-      <Text style={qStyles.quoteChar}>"</Text>
-      <Text style={qStyles.quoteText}>{text}</Text>
+      <Text style={qStyles.label}>Motivação do dia</Text>
+      <Text style={qStyles.quoteText}>"{text}"</Text>
       <View style={qStyles.footer}>
-        <Text style={qStyles.label}>Motivação do dia</Text>
         <TouchableOpacity style={qStyles.shareBtn} onPress={handleShare}>
           <Ionicons name="share-outline" size={13} color="#aaa" />
           <Text style={qStyles.shareBtnText}>Compartilhar</Text>
@@ -447,15 +446,17 @@ export default function HomeScreen() {
             </View>
           </View>
 
-          <View style={styles.exercisePreview}>
-            {todayWorkout.session.exercises.slice(0, 3).map((ex, i) => (
-              <View key={i} style={styles.exerciseRow}>
-                <Text style={styles.exerciseName} numberOfLines={1}>{ex.name}</Text>
-                <Text style={styles.exerciseSets}>{ex.sets}×{ex.reps}</Text>
-              </View>
-            ))}
-            {todayWorkout.session.exercises.length > 3 && (
-              <Text style={styles.exerciseMore}>+{todayWorkout.session.exercises.length - 3} mais</Text>
+          <View style={styles.planFooterRow}>
+            <TouchableOpacity style={{ flex: 1, marginRight: 8 }} onPress={() => router.push(`/(app)/analysis/${todayWorkout.analysisId}/workout`)}>
+              <Text style={styles.planLink} numberOfLines={1}>
+                +{todayWorkout.session.exercises.length} exercícios · Ver plano completo
+              </Text>
+            </TouchableOpacity>
+            {todayWorkout.isCompleted && (
+              <TouchableOpacity style={styles.shareWorkoutBtn} onPress={() => setShareVisible(true)}>
+                <Ionicons name="share-outline" size={14} color="#aaa" />
+                <Text style={styles.shareWorkoutText}>Compartilhar treino</Text>
+              </TouchableOpacity>
             )}
           </View>
 
@@ -469,18 +470,6 @@ export default function HomeScreen() {
               {todayWorkout.isCompleted ? 'Concluído ✓' : 'Marcar como concluído'}
             </Text>
           </TouchableOpacity>
-
-          <View style={styles.planFooterRow}>
-            <TouchableOpacity onPress={() => router.push(`/(app)/analysis/${todayWorkout.analysisId}/workout`)}>
-              <Text style={styles.planLink}>Ver plano completo</Text>
-            </TouchableOpacity>
-            {todayWorkout.isCompleted && (
-              <TouchableOpacity style={styles.shareWorkoutBtn} onPress={() => setShareVisible(true)}>
-                <Ionicons name="share-outline" size={14} color="#aaa" />
-                <Text style={styles.shareWorkoutText}>Compartilhar treino</Text>
-              </TouchableOpacity>
-            )}
-          </View>
         </TouchableOpacity>
       )}
 
@@ -802,7 +791,7 @@ const qStyles = StyleSheet.create({
     overflow: 'hidden',
     padding: 24,
     gap: 10,
-    minHeight: 180,
+    minHeight: 160,
     justifyContent: 'flex-end',
   },
   quoteChar: {
@@ -810,18 +799,15 @@ const qStyles = StyleSheet.create({
     fontSize: 64,
     fontWeight: '900',
     lineHeight: 48,
-    marginBottom: -10,
+    marginBottom: -20,
   },
   quoteText: {
-    color: '#fff',
-    fontSize: 21,
-    lineHeight: 32,
-    fontStyle: 'italic',
-    fontWeight: '700',
+    color: 'rgba(255,255,255,0.65)',
+    fontSize: 17,
+    lineHeight: 26,
+    fontStyle: 'normal',
+    fontWeight: '600',
     letterSpacing: 0.3,
-    textShadowColor: 'rgba(255,255,255,0.5)',
-    textShadowOffset: { width: 0, height: 0 },
-    textShadowRadius: 12,
   },
   footer: {
     flexDirection: 'row',

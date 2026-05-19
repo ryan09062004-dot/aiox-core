@@ -7,7 +7,10 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { router } from 'expo-router'
 import { Ionicons } from '@expo/vector-icons'
 import type { MealPlan, MealItem } from '@shapeai/shared'
-import { getLatestMealPlan, generateMealPlan } from '../../src/services/meal-plan.service'
+import {
+  listMealPlans, getMealPlanById, getLatestMealPlan, generateMealPlan,
+  type MealPlanSummary,
+} from '../../src/services/meal-plan.service'
 
 const MEAL_ICONS: Record<string, string> = {
   'Café da Manhã': '☀️',
@@ -58,7 +61,7 @@ function MealCard({ meal }: { meal: MealItem }) {
           <Text style={styles.cardFooterText}>
             {hasAlts ? `Ver detalhes · ${allOptions.length} opções` : 'Ver detalhes'}
           </Text>
-          <Ionicons name="chevron-forward" size={12} color="#444" />
+          <Ionicons name="chevron-forward" size={13} color="#4CAF50" />
         </View>
       </TouchableOpacity>
 
@@ -145,23 +148,55 @@ function MealCard({ meal }: { meal: MealItem }) {
   )
 }
 
+function formatPlanDate(iso: string): string {
+  return new Date(iso).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit' })
+}
+
 export default function MealPlanScreen() {
   const insets = useSafeAreaInsets()
+  const [summaries, setSummaries] = useState<MealPlanSummary[]>([])
+  const [selectedId, setSelectedId] = useState<string | null>(null)
   const [plan, setPlan] = useState<MealPlan | null>(null)
   const [loading, setLoading] = useState(true)
+  const [planLoading, setPlanLoading] = useState(false)
   const [generating, setGenerating] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    getLatestMealPlan()
-      .then(setPlan)
-      .catch((err: Error) => {
-        if (!err.message.includes('NOT_FOUND') && !err.message.includes('404')) {
-          setError(err.message)
+    async function init() {
+      try {
+        const [list, latest] = await Promise.allSettled([
+          listMealPlans(),
+          getLatestMealPlan(),
+        ])
+        if (list.status === 'fulfilled') setSummaries(list.value)
+        if (latest.status === 'fulfilled') {
+          setPlan(latest.value)
+          setSelectedId(latest.value.id ?? null)
+        } else {
+          const msg = (latest.reason as Error).message ?? ''
+          if (!msg.includes('NOT_FOUND') && !msg.includes('404')) setError(msg)
         }
-      })
-      .finally(() => setLoading(false))
+      } finally {
+        setLoading(false)
+      }
+    }
+    init()
   }, [])
+
+  const selectPlan = useCallback(async (id: string) => {
+    if (id === selectedId) return
+    setSelectedId(id)
+    setPlanLoading(true)
+    try {
+      const p = await getMealPlanById(id)
+      setPlan(p)
+    } catch (e) {
+      setError((e as Error).message)
+    } finally {
+      setPlanLoading(false)
+    }
+  }, [selectedId])
 
   const handleGenerate = useCallback(async () => {
     setGenerating(true)
@@ -169,6 +204,11 @@ export default function MealPlanScreen() {
     try {
       const newPlan = await generateMealPlan()
       setPlan(newPlan)
+      setSelectedId(newPlan.id ?? null)
+      setSummaries((prev) => {
+        const entry: MealPlanSummary = { id: newPlan.id, goal: newPlan.goal, generated_at: newPlan.generated_at }
+        return [entry, ...prev.filter((s) => s.id !== newPlan.id)]
+      })
     } catch (err: unknown) {
       const e = err as Error
       if (e.message === 'SUBSCRIPTION_REQUIRED' || e.message.includes('402')) {
@@ -193,47 +233,80 @@ export default function MealPlanScreen() {
         <Text style={styles.headerTitle}>Nutrição</Text>
       </View>
 
+      {summaries.length > 1 && (
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          style={styles.selectorScroll}
+          contentContainerStyle={styles.selectorContent}
+        >
+          {summaries.map((s, i) => {
+            const isActive = s.id === selectedId
+            return (
+              <TouchableOpacity
+                key={s.id}
+                style={[styles.selectorPill, isActive && styles.selectorPillActive]}
+                onPress={() => selectPlan(s.id)}
+                activeOpacity={0.75}
+              >
+                <Text style={[styles.selectorPillText, isActive && styles.selectorPillTextActive]}>
+                  {i === 0 ? 'Mais recente' : formatPlanDate(s.generated_at)}
+                </Text>
+              </TouchableOpacity>
+            )
+          })}
+        </ScrollView>
+      )}
+
       {loading ? (
         <View style={styles.center}>
           <ActivityIndicator size="large" color="#4CAF50" />
         </View>
       ) : plan ? (
         <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent}>
-          <View style={styles.summaryCard}>
-            <Text style={styles.summaryTitle}>Total do Dia</Text>
-            <View style={styles.summaryRow}>
-              <View style={styles.summaryItem}>
-                <Text style={styles.summaryValue}>{totalCal}</Text>
-                <Text style={styles.summaryLabel}>kcal</Text>
-              </View>
-              <View style={styles.summaryDivider} />
-              <View style={styles.summaryItem}>
-                <Text style={styles.summaryValue}>{totalProt}g</Text>
-                <Text style={styles.summaryLabel}>Proteína</Text>
-              </View>
-              <View style={styles.summaryDivider} />
-              <View style={styles.summaryItem}>
-                <Text style={styles.summaryValue}>{totalCarbs}g</Text>
-                <Text style={styles.summaryLabel}>Carbs</Text>
-              </View>
-              <View style={styles.summaryDivider} />
-              <View style={styles.summaryItem}>
-                <Text style={styles.summaryValue}>{totalFat}g</Text>
-                <Text style={styles.summaryLabel}>Gordura</Text>
-              </View>
-            </View>
-          </View>
-
-          {error && <Text style={styles.errorText}>{error}</Text>}
-
-          {meals.length === 0 ? (
+          {planLoading ? (
             <View style={styles.center}>
-              <Text style={styles.emptyText}>Nenhuma refeição encontrada. Toque em Atualizar.</Text>
+              <ActivityIndicator size="large" color="#4CAF50" />
             </View>
           ) : (
-            meals.map((meal, i) => (
-              <MealCard key={i} meal={meal} />
-            ))
+            <>
+              <View style={styles.summaryCard}>
+                <Text style={styles.summaryTitle}>Total do Dia</Text>
+                <View style={styles.summaryRow}>
+                  <View style={styles.summaryItem}>
+                    <Text style={styles.summaryValue}>{totalCal}</Text>
+                    <Text style={styles.summaryLabel}>kcal</Text>
+                  </View>
+                  <View style={styles.summaryDivider} />
+                  <View style={styles.summaryItem}>
+                    <Text style={styles.summaryValue}>{totalProt}g</Text>
+                    <Text style={styles.summaryLabel}>Proteína</Text>
+                  </View>
+                  <View style={styles.summaryDivider} />
+                  <View style={styles.summaryItem}>
+                    <Text style={styles.summaryValue}>{totalCarbs}g</Text>
+                    <Text style={styles.summaryLabel}>Carbs</Text>
+                  </View>
+                  <View style={styles.summaryDivider} />
+                  <View style={styles.summaryItem}>
+                    <Text style={styles.summaryValue}>{totalFat}g</Text>
+                    <Text style={styles.summaryLabel}>Gordura</Text>
+                  </View>
+                </View>
+              </View>
+
+              {error && <Text style={styles.errorText}>{error}</Text>}
+
+              {meals.length === 0 ? (
+                <View style={styles.center}>
+                  <Text style={styles.emptyText}>Nenhuma refeição encontrada.</Text>
+                </View>
+              ) : (
+                meals.map((meal, i) => (
+                  <MealCard key={i} meal={meal} />
+                ))
+              )}
+            </>
           )}
         </ScrollView>
       ) : (
@@ -283,6 +356,17 @@ const styles = StyleSheet.create({
   scroll: { flex: 1 },
   scrollContent: { padding: 16, gap: 14, paddingBottom: 40 },
 
+  selectorScroll: { backgroundColor: '#0A0A0A', borderBottomWidth: 1, borderBottomColor: '#1A1A1A' },
+  selectorContent: { paddingHorizontal: 16, paddingVertical: 10, gap: 8, flexDirection: 'row' },
+  selectorPill: {
+    paddingHorizontal: 14, paddingVertical: 7,
+    borderRadius: 20, backgroundColor: '#111',
+    borderWidth: 1, borderColor: '#1E1E1E',
+  },
+  selectorPillActive: { backgroundColor: '#1A2E1A', borderColor: '#4CAF50' },
+  selectorPillText: { color: '#555', fontSize: 13, fontWeight: '600' },
+  selectorPillTextActive: { color: '#4CAF50' },
+
   summaryCard: {
     backgroundColor: '#111',
     borderRadius: 16,
@@ -317,12 +401,13 @@ const styles = StyleSheet.create({
   cardFooter: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
-    paddingTop: 4,
+    gap: 6,
+    paddingTop: 10,
+    marginTop: 4,
     borderTopWidth: 1,
     borderTopColor: '#1A1A1A',
   },
-  cardFooterText: { flex: 1, color: '#444', fontSize: 12, fontWeight: '500' },
+  cardFooterText: { flex: 1, color: '#4CAF50', fontSize: 13, fontWeight: '600' },
 
   macrosRow: { flexDirection: 'row', gap: 8 },
   macroChip: {

@@ -13,6 +13,26 @@ function parseMeals(raw: unknown): unknown[] {
 }
 
 export async function mealPlansRoutes(app: FastifyInstance) {
+  app.get('/meal-plans', { preHandler: requireAuth }, async (request, reply) => {
+    const userId = request.authUser.id
+    const { rows } = await pool.query(
+      `SELECT id, goal, height_cm, weight_kg, sex, generated_at FROM meal_plans WHERE user_id = $1 ORDER BY generated_at DESC`,
+      [userId]
+    )
+    return reply.send(rows)
+  })
+
+  app.get('/meal-plans/:id', { preHandler: requireAuth }, async (request, reply) => {
+    const userId = request.authUser.id
+    const { id } = request.params as { id: string }
+    const { rows } = await pool.query(
+      `SELECT * FROM meal_plans WHERE id = $1 AND user_id = $2`,
+      [id, userId]
+    )
+    if (!rows[0]) return reply.status(404).send({ error: 'NOT_FOUND' })
+    return reply.send({ ...rows[0], meals: parseMeals(rows[0].meals) })
+  })
+
   app.get('/meal-plans/latest', { preHandler: requireAuth }, async (request, reply) => {
     const userId = request.authUser.id
     const { rows } = await pool.query(
