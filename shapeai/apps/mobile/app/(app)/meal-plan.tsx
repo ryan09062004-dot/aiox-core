@@ -5,11 +5,9 @@ import {
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { router } from 'expo-router'
-import AsyncStorage from '@react-native-async-storage/async-storage'
 import { Ionicons } from '@expo/vector-icons'
 import type { MealPlan, MealItem } from '@shapeai/shared'
 import { getLatestMealPlan, generateMealPlan } from '../../src/services/meal-plan.service'
-import { PHOTO_TIP_STORAGE_KEY } from './photo-tip'
 
 const MEAL_ICONS: Record<string, string> = {
   'Café da Manhã': '☀️',
@@ -83,14 +81,33 @@ export default function MealPlanScreen() {
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    getLatestMealPlan()
-      .then(setPlan)
-      .catch((err: Error) => {
-        if (!err.message.includes('NOT_FOUND') && !err.message.includes('404')) {
-          setError(err.message)
+    async function init() {
+      setLoading(true)
+      try {
+        const existing = await getLatestMealPlan()
+        setPlan(existing)
+      } catch (err: unknown) {
+        const e = err as Error
+        if (e.message.includes('NOT_FOUND') || e.message.includes('404')) {
+          try {
+            const newPlan = await generateMealPlan()
+            setPlan(newPlan)
+          } catch (genErr: unknown) {
+            const ge = genErr as Error
+            if (ge.message === 'SUBSCRIPTION_REQUIRED' || ge.message.includes('402')) {
+              router.push('/(app)/paywall')
+              return
+            }
+            setError(ge.message ?? 'Erro ao gerar plano alimentar.')
+          }
+        } else {
+          setError(e.message)
         }
-      })
-      .finally(() => setLoading(false))
+      } finally {
+        setLoading(false)
+      }
+    }
+    init()
   }, [])
 
   const handleGenerate = useCallback(async () => {
@@ -115,11 +132,6 @@ export default function MealPlanScreen() {
   const totalProt = plan?.meals.reduce((s, m) => s + m.protein_g, 0) ?? 0
   const totalCarbs = plan?.meals.reduce((s, m) => s + m.carbs_g, 0) ?? 0
   const totalFat = plan?.meals.reduce((s, m) => s + m.fats_g, 0) ?? 0
-
-  async function goToAnalysis() {
-    const skip = await AsyncStorage.getItem(PHOTO_TIP_STORAGE_KEY)
-    router.push((skip === 'true' ? '/(app)/camera' : '/(app)/photo-tip') as never)
-  }
 
   return (
     <View style={styles.container}>
@@ -176,37 +188,20 @@ export default function MealPlanScreen() {
         </ScrollView>
       ) : (
         <View style={styles.center}>
-          {error ? (
-            <Text style={styles.errorText}>{error}</Text>
-          ) : (
-            <>
-              <Ionicons name="restaurant-outline" size={56} color="#2a2a2a" />
-              <Text style={styles.emptyTitle}>Sem plano alimentar</Text>
-              <Text style={styles.emptyText}>
-                Gere um plano com 5 refeições diárias personalizadas por IA para o seu objetivo.
-              </Text>
-              <TouchableOpacity
-                style={styles.generateBtn}
-                onPress={handleGenerate}
-                disabled={generating}
-                activeOpacity={0.85}
-              >
-                {generating ? (
-                  <ActivityIndicator size="small" color="#0A0A0A" />
-                ) : (
-                  <Text style={styles.generateBtnText}>Gerar plano alimentar</Text>
-                )}
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.analysisBtn}
-                onPress={goToAnalysis}
-                activeOpacity={0.8}
-              >
-                <Ionicons name="scan-outline" size={16} color="#4CAF50" />
-                <Text style={styles.analysisBtnText}>Fazer uma avaliação primeiro</Text>
-              </TouchableOpacity>
-            </>
-          )}
+          <Ionicons name="restaurant-outline" size={56} color="#2a2a2a" />
+          <Text style={styles.emptyTitle}>Erro ao gerar plano</Text>
+          <Text style={styles.errorText}>{error}</Text>
+          <TouchableOpacity
+            style={styles.generateBtn}
+            onPress={handleGenerate}
+            disabled={generating}
+            activeOpacity={0.85}
+          >
+            {generating
+              ? <ActivityIndicator size="small" color="#0A0A0A" />
+              : <Text style={styles.generateBtnText}>Tentar novamente</Text>
+            }
+          </TouchableOpacity>
         </View>
       )}
     </View>
@@ -283,7 +278,6 @@ const styles = StyleSheet.create({
   ingredientText: { flex: 1, color: '#888', fontSize: 13, lineHeight: 20 },
 
   emptyTitle: { color: '#fff', fontSize: 20, fontWeight: '700', textAlign: 'center' },
-  emptyText: { color: '#666', fontSize: 14, textAlign: 'center', lineHeight: 22, maxWidth: 280 },
   generateBtn: {
     backgroundColor: '#4CAF50', borderRadius: 14,
     paddingVertical: 14, paddingHorizontal: 28,
@@ -291,18 +285,5 @@ const styles = StyleSheet.create({
     minWidth: 220,
   },
   generateBtnText: { color: '#0A0A0A', fontSize: 15, fontWeight: '700' },
-  analysisBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: '#2a2a2a',
-    minWidth: 220,
-    justifyContent: 'center',
-  },
-  analysisBtnText: { color: '#4CAF50', fontSize: 14, fontWeight: '600' },
   errorText: { color: '#EF5350', fontSize: 14, textAlign: 'center' },
 })

@@ -16,6 +16,14 @@ import { WorkoutShareCard } from '../../src/components/workout/WorkoutShareCard'
 import { PHOTO_TIP_STORAGE_KEY } from './photo-tip'
 
 function storageKey(id: string) { return `workout_progress_${id}` }
+function modeKey(id: string) { return `workout_mode_${id}` }
+function applyWorkoutMode(sessions: WorkoutSession[], mode: 'gym' | 'home'): WorkoutSession[] {
+  if (mode === 'gym') return sessions
+  return sessions.map(s => ({
+    ...s,
+    exercises: s.exercises.map(ex => ex.home_alternative ? { ...ex, ...ex.home_alternative } : ex),
+  }))
+}
 function estimateDuration(exercises: WorkoutSession['exercises']) {
   return exercises.reduce((sum, ex) => sum + (ex.sets * 2), 0)
 }
@@ -40,6 +48,7 @@ export default function TreinoTab() {
   const [selectedWeek, setSelectedWeek] = useState(0)
   const [completed, setCompleted] = useState<Set<string>>(new Set())
   const [shareTarget, setShareTarget] = useState<{ session: WorkoutSession; weekNumber: number } | null>(null)
+  const [workoutMode, setWorkoutMode] = useState<'gym' | 'home'>('gym')
 
   const loadWorkout = useCallback(async (analysis: AnalysisSummary, isInitial = false) => {
     if (!isInitial) setLoadingWorkout(true)
@@ -49,6 +58,8 @@ export default function TreinoTab() {
       setWeeks(w)
       const raw = await AsyncStorage.getItem(storageKey(analysis.id))
       setCompleted(raw ? new Set(JSON.parse(raw)) : new Set())
+      const savedMode = await AsyncStorage.getItem(modeKey(analysis.id))
+      setWorkoutMode((savedMode as 'gym' | 'home') ?? 'gym')
       setSelectedWeek(analysis.completed_at ? elapsedWeek(analysis.completed_at, w.length) : 0)
     } finally {
       if (!isInitial) setLoadingWorkout(false)
@@ -81,6 +92,13 @@ export default function TreinoTab() {
     setSelectedIndex(index)
     await loadWorkout(completedAnalyses[index])
   }
+
+  const changeMode = useCallback(async (mode: 'gym' | 'home') => {
+    const id = completedAnalyses[selectedIndex]?.id
+    if (!id) return
+    setWorkoutMode(mode)
+    await AsyncStorage.setItem(modeKey(id), mode)
+  }, [completedAnalyses, selectedIndex])
 
   const toggleSession = useCallback(async (weekNumber: number, day: string) => {
     const analysisId = completedAnalyses[selectedIndex]?.id
@@ -132,6 +150,7 @@ export default function TreinoTab() {
 
   const selectedAnalysis = completedAnalyses[selectedIndex]
   const currentWeek = weeks[selectedWeek]
+  const displaySessions = applyWorkoutMode(currentWeek?.sessions ?? [], workoutMode)
   const goalLabel = goal ? GOAL_LABEL[goal] : '—'
   const sessionsPerWeek = weeks[0]?.sessions.length ?? 0
   const totalSessions = weeks.reduce((s, w) => s + w.sessions.length, 0)
@@ -236,10 +255,25 @@ export default function TreinoTab() {
         ))}
       </ScrollView>
 
+      <View style={styles.modeToggleContainer}>
+        <TouchableOpacity
+          style={[styles.modeBtn, workoutMode === 'gym' && styles.modeBtnActive]}
+          onPress={() => changeMode('gym')}
+        >
+          <Text style={[styles.modeBtnText, workoutMode === 'gym' && styles.modeBtnTextActive]}>Academia</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.modeBtn, workoutMode === 'home' && styles.modeBtnActive]}
+          onPress={() => changeMode('home')}
+        >
+          <Text style={[styles.modeBtnText, workoutMode === 'home' && styles.modeBtnTextActive]}>Em Casa</Text>
+        </TouchableOpacity>
+      </View>
+
       <ScrollView style={styles.daysScroll} contentContainerStyle={styles.daysContent}>
         {loadingWorkout ? (
           <ActivityIndicator color="#4CAF50" style={{ marginTop: 40 }} />
-        ) : currentWeek?.sessions.map((session, i) => (
+        ) : displaySessions.map((session, i) => (
           <WorkoutDayCard
             key={i}
             session={session}
@@ -334,6 +368,24 @@ const styles = StyleSheet.create({
   tabActive: { backgroundColor: '#4CAF50', borderColor: '#4CAF50' },
   tabText: { color: '#888', fontSize: 14, fontWeight: '600' },
   tabTextActive: { color: '#fff' },
+
+  modeToggleContainer: {
+    flexDirection: 'row',
+    marginHorizontal: 20,
+    marginTop: 10,
+    marginBottom: 2,
+    backgroundColor: '#111',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#1E1E1E',
+    padding: 4,
+  },
+  modeBtn: {
+    flex: 1, paddingVertical: 8, alignItems: 'center', borderRadius: 10,
+  },
+  modeBtnActive: { backgroundColor: '#4CAF50' },
+  modeBtnText: { color: '#555', fontSize: 13, fontWeight: '700' },
+  modeBtnTextActive: { color: '#fff' },
 
   daysScroll: { flex: 1 },
   daysContent: { padding: 20, paddingBottom: 40 },
