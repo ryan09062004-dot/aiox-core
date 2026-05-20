@@ -173,6 +173,20 @@ function HeroCard({ score, date }: { score: number; date: string }) {
   const color = scoreColor(score)
   return (
     <View style={s.heroCard}>
+      <LinearGradient
+        colors={[`${color}22`, 'transparent']}
+        start={{ x: 0, y: 0.5 }}
+        end={{ x: 1, y: 0.5 }}
+        style={s.glowLeft}
+        pointerEvents="none"
+      />
+      <LinearGradient
+        colors={['transparent', `${color}22`]}
+        start={{ x: 0, y: 0.5 }}
+        end={{ x: 1, y: 0.5 }}
+        style={s.glowRight}
+        pointerEvents="none"
+      />
       <View style={s.heroTop}>
         <Text style={s.heroTitle}>Score de Shape</Text>
         <Text style={s.heroDate}>{formatDate(date)}</Text>
@@ -568,6 +582,21 @@ const s = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#1E1E1E',
     gap: 14,
+    overflow: 'hidden',
+  },
+  glowLeft: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    width: 110,
+    bottom: 0,
+  },
+  glowRight: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    width: 110,
+    bottom: 0,
   },
   heroTop: { alignItems: 'center', gap: 4 },
   heroTitle: { color: '#bbb', fontSize: 16, fontWeight: '700', letterSpacing: 0.3 },
