@@ -329,7 +329,7 @@ export default function MealPlanScreen() {
           {scanning
             ? <ActivityIndicator size="small" color="#4CAF50" />
             : <>
-                <Ionicons name="camera-outline" size={18} color="#4CAF50" />
+                <Ionicons name="camera-outline" size={18} color="#ccc" />
                 <Text style={styles.scanButtonText}>Escanear</Text>
               </>
           }
@@ -463,14 +463,14 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    backgroundColor: '#0E2010',
+    backgroundColor: '#1A1A1A',
     borderWidth: 1,
-    borderColor: '#4CAF50',
+    borderColor: '#2E2E2E',
     borderRadius: 20,
     paddingHorizontal: 12,
     paddingVertical: 7,
   },
-  scanButtonText: { color: '#4CAF50', fontSize: 13, fontWeight: '700' },
+  scanButtonText: { color: '#ccc', fontSize: 13, fontWeight: '600' },
 
   scroll: { flex: 1 },
   scrollContent: { padding: 16, gap: 14, paddingBottom: 40 },
