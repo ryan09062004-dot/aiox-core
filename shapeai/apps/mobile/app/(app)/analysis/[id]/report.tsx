@@ -172,9 +172,8 @@ function ScoreBar({ score }: { score: number }) {
 function HeroCard({ score, date }: { score: number; date: string }) {
   const color = scoreColor(score)
   return (
+    <View style={[s.heroGlowFrame, { borderColor: color + '55', shadowColor: color }]}>
     <View style={s.heroCard}>
-      <View style={[s.glowBorderLeft, { backgroundColor: color, shadowColor: color }]} pointerEvents="none" />
-      <View style={[s.glowBorderRight, { backgroundColor: color, shadowColor: color }]} pointerEvents="none" />
       <View style={s.heroTop}>
         <Text style={s.heroTitle}>Score de Shape</Text>
         <Text style={s.heroDate}>{formatDate(date)}</Text>
@@ -188,6 +187,7 @@ function HeroCard({ score, date }: { score: number; date: string }) {
       </View>
       <Text style={s.heroContext}>Baseado em 9 grupos musculares</Text>
       <Text style={s.heroMotivation}>{scoreMotivation(score)}</Text>
+    </View>
     </View>
   )
 }
@@ -561,39 +561,21 @@ const s = StyleSheet.create({
   tabContent: { padding: 20, paddingBottom: 52 },
 
   // Hero
+  heroGlowFrame: {
+    borderRadius: 21,
+    borderWidth: 1.5,
+    marginBottom: 12,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.6,
+    shadowRadius: 14,
+    elevation: 8,
+  },
   heroCard: {
     backgroundColor: '#111',
     borderRadius: 20,
     padding: 28,
     alignItems: 'center',
-    marginBottom: 12,
-    borderWidth: 1,
-    borderColor: '#1E1E1E',
     gap: 14,
-  },
-  glowBorderLeft: {
-    position: 'absolute',
-    top: 14,
-    bottom: 14,
-    left: -1,
-    width: 2,
-    borderRadius: 2,
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.85,
-    shadowRadius: 10,
-    elevation: 6,
-  },
-  glowBorderRight: {
-    position: 'absolute',
-    top: 14,
-    bottom: 14,
-    right: -1,
-    width: 2,
-    borderRadius: 2,
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.85,
-    shadowRadius: 10,
-    elevation: 6,
   },
   heroTop: { alignItems: 'center', gap: 4 },
   heroTitle: { color: '#bbb', fontSize: 16, fontWeight: '700', letterSpacing: 0.3 },
