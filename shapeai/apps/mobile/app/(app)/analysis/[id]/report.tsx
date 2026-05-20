@@ -173,20 +173,8 @@ function HeroCard({ score, date }: { score: number; date: string }) {
   const color = scoreColor(score)
   return (
     <View style={s.heroCard}>
-      <LinearGradient
-        colors={[`${color}22`, 'transparent']}
-        start={{ x: 0, y: 0.5 }}
-        end={{ x: 1, y: 0.5 }}
-        style={s.glowLeft}
-        pointerEvents="none"
-      />
-      <LinearGradient
-        colors={['transparent', `${color}22`]}
-        start={{ x: 0, y: 0.5 }}
-        end={{ x: 1, y: 0.5 }}
-        style={s.glowRight}
-        pointerEvents="none"
-      />
+      <View style={[s.glowBorderLeft, { backgroundColor: color, shadowColor: color }]} pointerEvents="none" />
+      <View style={[s.glowBorderRight, { backgroundColor: color, shadowColor: color }]} pointerEvents="none" />
       <View style={s.heroTop}>
         <Text style={s.heroTitle}>Score de Shape</Text>
         <Text style={s.heroDate}>{formatDate(date)}</Text>
@@ -582,21 +570,30 @@ const s = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#1E1E1E',
     gap: 14,
-    overflow: 'hidden',
   },
-  glowLeft: {
+  glowBorderLeft: {
     position: 'absolute',
-    top: 0,
-    left: 0,
-    width: 110,
-    bottom: 0,
+    top: 14,
+    bottom: 14,
+    left: -1,
+    width: 2,
+    borderRadius: 2,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.85,
+    shadowRadius: 10,
+    elevation: 6,
   },
-  glowRight: {
+  glowBorderRight: {
     position: 'absolute',
-    top: 0,
-    right: 0,
-    width: 110,
-    bottom: 0,
+    top: 14,
+    bottom: 14,
+    right: -1,
+    width: 2,
+    borderRadius: 2,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.85,
+    shadowRadius: 10,
+    elevation: 6,
   },
   heroTop: { alignItems: 'center', gap: 4 },
   heroTitle: { color: '#bbb', fontSize: 16, fontWeight: '700', letterSpacing: 0.3 },
