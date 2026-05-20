@@ -9,8 +9,8 @@ interface Props {
   isLatest: boolean
   index: number
   total: number
-  prevScore?: number | null
   onPress?: () => void
+  onWorkout?: () => void
 }
 
 const MUSCLE_PT: Record<string, string> = {
@@ -35,22 +35,18 @@ function getStrongestMuscle(scores: Record<string, number>): string | null {
   return MUSCLE_PT[best] ?? best
 }
 
-function scoreMessage(score: number): string {
-  if (score >= 70) return 'Seu shape está excelente!'
-  if (score >= 50) return 'Seu shape está muito bem!'
-  if (score >= 30) return 'Seu shape está evoluindo!'
-  return 'Você está construindo sua base!'
+function scoreLabel(score: number): { text: string; color: string } {
+  if (score >= 70) return { text: 'Excelente', color: '#4CAF50' }
+  if (score >= 40) return { text: 'Ótimo', color: '#8BC34A' }
+  return { text: 'Em Progresso', color: '#64B5F6' }
 }
 
 function formatDate(iso: string): string {
-  return new Date(iso).toLocaleDateString('pt-BR', { day: 'numeric', month: 'long', year: 'numeric' })
+  const d = new Date(iso)
+  return d.toLocaleDateString('pt-BR', { day: 'numeric', month: 'long', year: 'numeric' })
 }
 
-function formatDateShort(iso: string): string {
-  return new Date(iso).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })
-}
-
-const RADIUS = 48
+const RADIUS = 54
 const STROKE = 8
 const CIRCUMFERENCE = 2 * Math.PI * RADIUS
 
@@ -61,10 +57,23 @@ function ScoreRing({ score, color }: { score: number; color: string }) {
   return (
     <View style={{ alignItems: 'center', justifyContent: 'center', width: size, height: size }}>
       <Svg width={size} height={size} style={{ position: 'absolute' }}>
-        <Circle cx={size / 2} cy={size / 2} r={RADIUS} stroke="#1E1E1E" strokeWidth={STROKE} fill="none" />
+        {/* trilha */}
         <Circle
-          cx={size / 2} cy={size / 2} r={RADIUS}
-          stroke={color} strokeWidth={STROKE} fill="none"
+          cx={size / 2}
+          cy={size / 2}
+          r={RADIUS}
+          stroke="#1E1E1E"
+          strokeWidth={STROKE}
+          fill="none"
+        />
+        {/* progresso */}
+        <Circle
+          cx={size / 2}
+          cy={size / 2}
+          r={RADIUS}
+          stroke={color}
+          strokeWidth={STROKE}
+          fill="none"
           strokeDasharray={`${CIRCUMFERENCE} ${CIRCUMFERENCE}`}
           strokeDashoffset={progress}
           strokeLinecap="round"
@@ -78,86 +87,70 @@ function ScoreRing({ score, color }: { score: number; color: string }) {
   )
 }
 
-export function AnalysisHistoryItem({ item, isLatest, index, total, prevScore, onPress }: Props) {
+export function AnalysisHistoryItem({ item, isLatest, index, total, onPress, onWorkout }: Props) {
   const evalNumber = total - index
   const score = item.scores ? calculateOverallScore(item.scores) : null
   const bodyFat = item.scores?.body_fat_estimate_pct ?? null
   const scoreColor = score != null ? getScoreColor(score) : '#555'
   const strongest = item.scores ? getStrongestMuscle(item.scores as unknown as Record<string, number>) : null
-  const weakest = item.top_development_areas?.[0]
-    ? (MUSCLE_PT[item.top_development_areas[0]] ?? item.top_development_areas[0])
-    : null
+  const weakest = item.top_development_areas?.[0] ? (MUSCLE_PT[item.top_development_areas[0]] ?? item.top_development_areas[0]) : null
 
-  // Card destacado — avaliação mais recente
   if (isLatest && score != null) {
     return (
       <TouchableOpacity
         style={styles.featuredCard}
         onPress={onPress}
-        activeOpacity={onPress ? 0.8 : 1}
+        activeOpacity={onPress ? 0.75 : 1}
         testID={`history-item-${item.id}`}
       >
-        {/* Topo */}
-        <View style={styles.featuredTop}>
-          <View style={styles.currentBadge}>
-            <Text style={styles.currentBadgeText}>Avaliação atual</Text>
-          </View>
+        <View style={styles.featuredHeader}>
           <Text style={styles.featuredDate}>{formatDate(item.created_at)}</Text>
-        </View>
-
-        {/* Score + mensagem */}
-        <View style={styles.featuredHero}>
-          <ScoreRing score={score} color={scoreColor} />
-          <View style={styles.heroRight}>
-            <Text style={[styles.heroMessage, { color: scoreColor }]}>{scoreMessage(score)}</Text>
-            <Text style={styles.heroSub}>Análise gerada por IA com base nas suas fotos</Text>
+          <View style={styles.featuredBadge}>
+            <Text style={styles.featuredBadgeLabel}>Mais recente</Text>
           </View>
         </View>
 
-        {/* Insights */}
-        <View style={styles.insightsList}>
-          {bodyFat != null && (
-            <View style={styles.insightRow}>
-              <View style={[styles.insightDot, { backgroundColor: '#64B5F6' }]} />
-              <Text style={styles.insightText}>
-                <Text style={styles.insightLabel}>Gordura corporal: </Text>
-                {bodyFat.toFixed(1)}%
-              </Text>
-            </View>
-          )}
-          {strongest && (
-            <View style={styles.insightRow}>
-              <View style={[styles.insightDot, { backgroundColor: '#4CAF50' }]} />
-              <Text style={styles.insightText}>
-                <Text style={styles.insightLabel}>Ponto forte: </Text>
-                {strongest}
-              </Text>
-            </View>
-          )}
-          {weakest && (
-            <View style={styles.insightRow}>
-              <View style={[styles.insightDot, { backgroundColor: '#FF9800' }]} />
-              <Text style={styles.insightText}>
-                <Text style={styles.insightLabel}>Área para evoluir: </Text>
-                {weakest}
-              </Text>
-            </View>
-          )}
+        <View style={styles.featuredBody}>
+          <ScoreRing score={score} color="#4CAF50" />
+
+          <View style={styles.featuredStats}>
+            {bodyFat != null && (
+              <View style={styles.statBlock}>
+                <Text style={styles.statValue}>{bodyFat.toFixed(1)}%</Text>
+                <Text style={styles.statLabel}>Gordura corporal</Text>
+              </View>
+            )}
+            {(strongest || weakest) && (
+              <View style={styles.muscleRows}>
+                {strongest && (
+                  <View style={styles.muscleRow}>
+                    <Text style={[styles.muscleTriangle, { color: '#4CAF50' }]}>▲</Text>
+                    <Text style={styles.muscleText} numberOfLines={1}>{strongest}</Text>
+                  </View>
+                )}
+                {weakest && (
+                  <View style={styles.muscleRow}>
+                    <Text style={[styles.muscleTriangle, { color: '#F44336' }]}>▼</Text>
+                    <Text style={styles.muscleText} numberOfLines={1}>{weakest}</Text>
+                  </View>
+                )}
+              </View>
+            )}
+          </View>
         </View>
 
-        {/* CTA */}
-        {onPress && (
-          <View style={styles.featuredCTA}>
-            <Text style={styles.featuredCTAText}>Ver relatório completo</Text>
-            <Ionicons name="arrow-forward" size={14} color="#4CAF50" />
-          </View>
+        {onWorkout && (
+          <TouchableOpacity
+            style={styles.workoutButton}
+            onPress={onWorkout}
+            activeOpacity={0.8}
+          >
+            <Text style={styles.workoutButtonText}>Ver mais detalhes</Text>
+          </TouchableOpacity>
         )}
       </TouchableOpacity>
     )
   }
-
-  // Card compacto — histórico
-  const trendDiff = prevScore != null && score != null ? score - prevScore : null
 
   return (
     <TouchableOpacity
@@ -166,36 +159,46 @@ export function AnalysisHistoryItem({ item, isLatest, index, total, prevScore, o
       activeOpacity={onPress ? 0.7 : 1}
       testID={`history-item-${item.id}`}
     >
-      <View style={styles.compactLeft}>
-        <Text style={styles.compactEval}>#{evalNumber} avaliação</Text>
-        <Text style={styles.compactDate}>{formatDateShort(item.created_at)}</Text>
-        {item.status === 'processing' && (
-          <Text style={styles.processingText}>Processando...</Text>
-        )}
-      </View>
-
-      <View style={styles.compactRight}>
-        {score != null ? (
-          <>
-            <Text style={[styles.compactScore, { color: scoreColor }]}>{score}</Text>
-            {trendDiff != null && (
-              <View style={styles.trendRow}>
-                <Ionicons
-                  name={trendDiff >= 0 ? 'trending-up' : 'trending-down'}
-                  size={12}
-                  color={trendDiff >= 0 ? '#4CAF50' : '#F44336'}
-                />
-                <Text style={[styles.trendText, { color: trendDiff >= 0 ? '#4CAF50' : '#F44336' }]}>
-                  {trendDiff >= 0 ? '+' : ''}{trendDiff}
-                </Text>
+      <View style={styles.compactInner}>
+        {/* Conteúdo esquerdo */}
+        <View style={styles.compactLeft}>
+          <View style={styles.compactHeader}>
+            <Text style={styles.compactDate}>{formatDate(item.created_at)}</Text>
+            {item.status === 'processing' && (
+              <View style={styles.badgeProcessing}>
+                <Text style={styles.badgeStatusText}>Processando</Text>
               </View>
             )}
-          </>
-        ) : (
-          <Text style={styles.pendingText}>—</Text>
-        )}
+          </View>
+
+          {score != null ? (
+            <View style={styles.compactMetrics}>
+              <View style={styles.compactMetric}>
+                <Text style={styles.evalNumber}>#{evalNumber}</Text>
+                <Text style={styles.compactLabel}>avaliação</Text>
+              </View>
+              {bodyFat != null && (
+                <>
+                  <View style={styles.metricDivider} />
+                  <View style={styles.compactMetric}>
+                    <Text style={styles.compactValue}>{bodyFat.toFixed(1)}%</Text>
+                    <Text style={styles.compactLabel}>Gordura corporal</Text>
+                  </View>
+                </>
+              )}
+              <View style={styles.metricDivider} />
+              <View style={styles.compactMetric}>
+                <Text style={styles.compactValue}>{scoreLabel(score).text}</Text>
+                <Text style={styles.compactLabel}>Resultado</Text>
+              </View>
+            </View>
+          ) : (
+            <Text style={styles.pending}>Aguardando análise...</Text>
+          )}
+        </View>
+
         {onPress && score != null && (
-          <Ionicons name="chevron-forward" size={16} color="#333" style={{ marginLeft: 8 }} />
+          <Ionicons name="chevron-forward" size={20} color="#666" style={styles.chevron} />
         )}
       </View>
     </TouchableOpacity>
@@ -203,83 +206,85 @@ export function AnalysisHistoryItem({ item, isLatest, index, total, prevScore, o
 }
 
 const styles = StyleSheet.create({
-  // ── Featured card ─────────────────────────────────────────────
+  // Card destacado
   featuredCard: {
     backgroundColor: '#111',
     borderRadius: 20,
-    padding: 20,
+    padding: 24,
     marginBottom: 12,
     borderWidth: 1,
-    borderColor: '#1E1E1E',
-    gap: 16,
+    borderColor: '#2E2E2E',
   },
-  featuredTop: {
+  featuredHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    marginBottom: 28,
   },
-  currentBadge: {
-    backgroundColor: '#1A2E1A',
-    borderRadius: 20,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
+  featuredDate: { fontSize: 13, color: '#666', fontWeight: '500' },
+  featuredBadge: { flexDirection: 'row', alignItems: 'baseline' },
+  featuredBadgeLabel: { fontSize: 14, color: '#4CAF50', fontWeight: '600' },
+  featuredBody: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 32,
+    marginBottom: 24,
+  },
+  featuredStats: { flex: 1 },
+  statBlock: { marginBottom: 8 },
+  statValue: { fontSize: 26, fontWeight: '700', color: '#fff' },
+  statLabel: { fontSize: 12, color: '#555', marginTop: 2 },
+
+  // Ring
+  ringScore: { fontSize: 28, fontWeight: '800' },
+  ringLabel: { fontSize: 11, color: '#555', marginTop: 2 },
+
+  // Botão treino
+  workoutButton: {
     borderWidth: 1,
-    borderColor: '#2E4A2E',
-  },
-  currentBadgeText: { fontSize: 11, color: '#4CAF50', fontWeight: '700', letterSpacing: 0.5 },
-  featuredDate: { fontSize: 12, color: '#444', fontWeight: '500' },
-
-  featuredHero: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 16,
-  },
-  heroRight: { flex: 1, gap: 4 },
-  heroMessage: { fontSize: 17, fontWeight: '800', lineHeight: 22 },
-  heroSub: { fontSize: 11, color: '#444', lineHeight: 16 },
-
-  ringScore: { fontSize: 26, fontWeight: '800' },
-  ringLabel: { fontSize: 10, color: '#444', marginTop: 1 },
-
-  insightsList: { gap: 8 },
-  insightRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  insightDot: { width: 7, height: 7, borderRadius: 4 },
-  insightText: { fontSize: 13, color: '#888' },
-  insightLabel: { color: '#555', fontWeight: '600' },
-
-  featuredCTA: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-    paddingVertical: 11,
+    borderColor: '#4CAF50',
     borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#2E4A2E',
-    backgroundColor: '#0D1F0D',
-  },
-  featuredCTAText: { fontSize: 13, fontWeight: '700', color: '#4CAF50' },
-
-  // ── Compact card ──────────────────────────────────────────────
-  compactCard: {
-    flexDirection: 'row',
+    paddingVertical: 12,
     alignItems: 'center',
+  },
+  workoutButtonText: { fontSize: 14, fontWeight: '600', color: '#4CAF50' },
+
+  // Card compacto
+  compactCard: {
     backgroundColor: '#0F0F0F',
     borderRadius: 14,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
+    padding: 16,
     marginBottom: 8,
     borderWidth: 1,
     borderColor: '#1A1A1A',
   },
-  compactLeft: { flex: 1, gap: 3 },
-  compactEval: { fontSize: 13, fontWeight: '700', color: '#fff' },
-  compactDate: { fontSize: 12, color: '#444' },
-  processingText: { fontSize: 11, color: '#FF9800', fontStyle: 'italic' },
+  compactHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  compactDate: { fontSize: 13, color: '#666', fontWeight: '500' },
+  compactMetrics: { flexDirection: 'row', alignItems: 'center' },
+  compactMetric: { flex: 1, alignItems: 'center' },
+  compactValue: { fontSize: 20, fontWeight: '700', color: '#fff', marginBottom: 2 },
+  compactLabel: { fontSize: 11, color: '#555' },
+  metricDivider: { width: 1, height: 32, backgroundColor: '#1E1E1E' },
 
-  compactRight: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  compactScore: { fontSize: 22, fontWeight: '800' },
-  trendRow: { flexDirection: 'row', alignItems: 'center', gap: 2 },
-  trendText: { fontSize: 11, fontWeight: '700' },
-  pendingText: { fontSize: 18, color: '#333' },
+  // Badges
+  badgeLatest: { backgroundColor: '#4CAF50', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 20 },
+  badgeLatestText: { color: '#fff', fontSize: 11, fontWeight: '700' },
+  badgeProcessing: { backgroundColor: '#FF9800', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 20 },
+  badgeStatusText: { color: '#fff', fontSize: 11, fontWeight: '600' },
+
+  muscleRows: { gap: 8, marginTop: 10 },
+  muscleRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  muscleTriangle: { fontSize: 10, lineHeight: 14 },
+  muscleText: { fontSize: 12, color: '#aaa', fontWeight: '500', flexShrink: 1 },
+  evalNumber: { fontSize: 20, fontWeight: '700', color: '#64B5F6' },
+  evalNumberFeatured: { fontSize: 16, fontWeight: '600', color: '#64B5F6' },
+  pending: { fontSize: 13, color: '#555', fontStyle: 'italic' },
+  compactInner: { flexDirection: 'row', alignItems: 'center' },
+  compactLeft: { flex: 1 },
+  chevron: { marginLeft: 8 },
 })
