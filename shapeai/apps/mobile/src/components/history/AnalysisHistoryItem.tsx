@@ -1,5 +1,6 @@
 import { useRef, useEffect, useState } from 'react'
 import { View, Text, StyleSheet, TouchableOpacity, Animated, Easing } from 'react-native'
+import { LinearGradient } from 'expo-linear-gradient'
 import { Ionicons } from '@expo/vector-icons'
 import Svg, { Circle } from 'react-native-svg'
 
@@ -129,6 +130,20 @@ export function AnalysisHistoryItem({ item, isLatest, index, total, prevScore, o
         activeOpacity={onPress ? 0.75 : 1}
         testID={`history-item-${item.id}`}
       >
+        <LinearGradient
+          colors={['rgba(76,175,80,0.13)', 'transparent']}
+          start={{ x: 0, y: 0.5 }}
+          end={{ x: 1, y: 0.5 }}
+          style={styles.glowLeft}
+          pointerEvents="none"
+        />
+        <LinearGradient
+          colors={['transparent', 'rgba(76,175,80,0.13)']}
+          start={{ x: 0, y: 0.5 }}
+          end={{ x: 1, y: 0.5 }}
+          style={styles.glowRight}
+          pointerEvents="none"
+        />
         <View style={styles.featuredHeader}>
           <Text style={styles.featuredDate}>{formatDate(item.created_at)}</Text>
           <View style={styles.featuredBadge}>
@@ -258,6 +273,21 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     borderWidth: 1,
     borderColor: '#2E2E2E',
+    overflow: 'hidden',
+  },
+  glowLeft: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    width: 90,
+    bottom: 0,
+  },
+  glowRight: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    width: 90,
+    bottom: 0,
   },
   featuredHeader: {
     flexDirection: 'row',

@@ -10,6 +10,8 @@ import {
   Image,
   Modal,
   Alert,
+  Animated,
+  Easing,
 } from 'react-native'
 import * as FileSystem from 'expo-file-system'
 import * as MediaLibrary from 'expo-media-library'
@@ -17,6 +19,8 @@ import { LinearGradient } from 'expo-linear-gradient'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useLocalSearchParams, router } from 'expo-router'
 import Svg, { Circle, Text as SvgText } from 'react-native-svg'
+
+const AnimatedCircle = Animated.createAnimatedComponent(Circle)
 import { getAnalysisResult, AnalysisResult, BodyComposition, MuscleScores } from '../../../../src/services/analysis.service'
 import ReportSectionCard, { ReportSection } from '../../../../src/components/report/ReportSectionCard'
 import { useSubscription } from '../../../../src/hooks/useSubscription'
@@ -93,24 +97,48 @@ function ScoreGauge({ score }: { score: number }) {
   const radius = 72
   const strokeWidth = 14
   const circumference = 2 * Math.PI * radius
-  const filled = circumference * (score / 100)
   const size = (radius + strokeWidth) * 2
   const cx = size / 2
   const cy = size / 2
   const color = scoreColor(score)
 
+  const animatedOffset = useRef(new Animated.Value(circumference)).current
+  const animatedScore = useRef(new Animated.Value(0)).current
+  const [displayScore, setDisplayScore] = useState(0)
+
+  useEffect(() => {
+    animatedScore.addListener(({ value }) => setDisplayScore(Math.round(value)))
+
+    Animated.timing(animatedOffset, {
+      toValue: circumference - circumference * (score / 100),
+      duration: 1200,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: false,
+    }).start()
+
+    Animated.timing(animatedScore, {
+      toValue: score,
+      duration: 1000,
+      easing: Easing.out(Easing.quad),
+      useNativeDriver: false,
+    }).start()
+
+    return () => { animatedScore.removeAllListeners() }
+  }, [score])
+
   return (
     <Svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
       <Circle cx={cx} cy={cy} r={radius} stroke="#1A1A1A" strokeWidth={strokeWidth} fill="none" />
-      <Circle
+      <AnimatedCircle
         cx={cx} cy={cy} r={radius}
         stroke={color} strokeWidth={strokeWidth} fill="none"
-        strokeDasharray={`${filled} ${circumference - filled}`}
+        strokeDasharray={`${circumference} ${circumference}`}
+        strokeDashoffset={animatedOffset}
         strokeLinecap="round"
         rotation="-90" origin={`${cx}, ${cy}`}
       />
       <SvgText x={cx} y={cy + 5} textAnchor="middle" fontSize="36" fontWeight="bold" fill="#fff">
-        {score}
+        {displayScore}
       </SvgText>
       <SvgText x={cx} y={cy + 30} textAnchor="middle" fontSize="11" fontWeight="600" fill="#555" letterSpacing="2">
         PTS
@@ -121,9 +149,22 @@ function ScoreGauge({ score }: { score: number }) {
 
 function ScoreBar({ score }: { score: number }) {
   const color = scoreColor(score)
+  const animWidth = useRef(new Animated.Value(0)).current
+
+  useEffect(() => {
+    Animated.timing(animWidth, {
+      toValue: score,
+      duration: 1000,
+      easing: Easing.out(Easing.quad),
+      useNativeDriver: false,
+    }).start()
+  }, [score])
+
+  const width = animWidth.interpolate({ inputRange: [0, 100], outputRange: ['0%', '100%'] })
+
   return (
     <View style={barStyles.track}>
-      <View style={[barStyles.fill, { width: `${score}%` as `${number}%`, backgroundColor: color }]} />
+      <Animated.View style={[barStyles.fill, { width, backgroundColor: color }]} />
     </View>
   )
 }
