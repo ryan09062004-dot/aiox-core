@@ -6,6 +6,7 @@ import { router } from 'expo-router'
 import { listAnalyses } from '../../src/services/analysis.service'
 import { AnalysisHistoryItem } from '../../src/components/history/AnalysisHistoryItem'
 import type { AnalysisSummary } from '@shapeai/shared'
+import { calculateOverallScore } from '@shapeai/shared'
 import { useFocusEffect } from 'expo-router'
 
 export default function HistoryScreen() {
@@ -74,6 +75,10 @@ export default function HistoryScreen() {
   const latestCompletedId = visibleAnalyses.find((a) => a.status === 'completed')?.id
   const completedCount = visibleAnalyses.filter((a) => a.status === 'completed').length
 
+  const scoreByIndex = visibleAnalyses.map((a) =>
+    a.scores ? calculateOverallScore(a.scores) : null
+  )
+
   if (isLoading) {
     return (
       <View style={styles.centered}>
@@ -137,6 +142,7 @@ export default function HistoryScreen() {
           const isLatest = item.id === latestCompletedId
           const total = visibleAnalyses.length
           const isFirstHistory = !isLatest && visibleAnalyses.findIndex((a) => a.id === latestCompletedId) !== -1 && index === (visibleAnalyses.findIndex((a) => a.id === latestCompletedId) + 1)
+          const prevScore = index < visibleAnalyses.length - 1 ? scoreByIndex[index + 1] : null
           return (
             <>
               {isFirstHistory && visibleAnalyses.length > 1 && (
@@ -147,6 +153,7 @@ export default function HistoryScreen() {
                 isLatest={isLatest}
                 index={index}
                 total={total}
+                prevScore={prevScore}
                 onPress={
                   item.status === 'completed'
                     ? () => router.push(`/(app)/analysis/${item.id}/report` as never)

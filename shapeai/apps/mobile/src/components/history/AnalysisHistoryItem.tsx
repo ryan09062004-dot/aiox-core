@@ -9,6 +9,7 @@ interface Props {
   isLatest: boolean
   index: number
   total: number
+  prevScore?: number | null
   onPress?: () => void
   onWorkout?: () => void
 }
@@ -87,7 +88,7 @@ function ScoreRing({ score, color }: { score: number; color: string }) {
   )
 }
 
-export function AnalysisHistoryItem({ item, isLatest, index, total, onPress, onWorkout }: Props) {
+export function AnalysisHistoryItem({ item, isLatest, index, total, prevScore, onPress, onWorkout }: Props) {
   const evalNumber = total - index
   const score = item.scores ? calculateOverallScore(item.scores) : null
   const bodyFat = item.scores?.body_fat_estimate_pct ?? null
@@ -188,8 +189,22 @@ export function AnalysisHistoryItem({ item, isLatest, index, total, onPress, onW
               )}
               <View style={styles.metricDivider} />
               <View style={styles.compactMetric}>
-                <Text style={styles.compactValue}>{scoreLabel(score).text}</Text>
-                <Text style={styles.compactLabel}>Resultado</Text>
+                <View style={styles.scoreWithTrend}>
+                  <Text style={[styles.compactValue, { color: scoreColor }]}>{score}</Text>
+                  {prevScore != null && (
+                    <View style={styles.trendPill}>
+                      <Ionicons
+                        name={score - prevScore >= 0 ? 'trending-up' : 'trending-down'}
+                        size={11}
+                        color={score - prevScore >= 0 ? '#4CAF50' : '#F44336'}
+                      />
+                      <Text style={[styles.trendText, { color: score - prevScore >= 0 ? '#4CAF50' : '#F44336' }]}>
+                        {score - prevScore >= 0 ? '+' : ''}{score - prevScore}
+                      </Text>
+                    </View>
+                  )}
+                </View>
+                <Text style={styles.compactLabel}>Score</Text>
               </View>
             </View>
           ) : (
@@ -282,6 +297,9 @@ const styles = StyleSheet.create({
   muscleTriangle: { fontSize: 10, lineHeight: 14 },
   muscleText: { fontSize: 12, color: '#aaa', fontWeight: '500', flexShrink: 1 },
   evalNumber: { fontSize: 20, fontWeight: '700', color: '#64B5F6' },
+  scoreWithTrend: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  trendPill: { flexDirection: 'row', alignItems: 'center', gap: 2 },
+  trendText: { fontSize: 11, fontWeight: '700' },
   evalNumberFeatured: { fontSize: 16, fontWeight: '600', color: '#64B5F6' },
   pending: { fontSize: 13, color: '#555', fontStyle: 'italic' },
   compactInner: { flexDirection: 'row', alignItems: 'center' },
