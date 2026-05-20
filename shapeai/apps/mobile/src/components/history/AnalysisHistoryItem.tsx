@@ -89,7 +89,7 @@ function ScoreRing({ score, color }: { score: number; color: string }) {
 }
 
 export function AnalysisHistoryItem({ item, isLatest, index, total, prevScore, onPress, onWorkout }: Props) {
-  const evalNumber = total - index
+  const evalNumber = index + 1
   const score = item.scores ? calculateOverallScore(item.scores) : null
   const bodyFat = item.scores?.body_fat_estimate_pct ?? null
   const scoreColor = score != null ? getScoreColor(score) : '#555'
