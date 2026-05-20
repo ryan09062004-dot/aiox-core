@@ -273,10 +273,11 @@ export default function MealPlanScreen() {
     }
     const picked = await ImagePicker.launchCameraAsync({
       mediaTypes: ['images'],
-      quality: 0.5,
+      quality: 0.3,
       base64: true,
       allowsEditing: true,
       aspect: [4, 3],
+      exif: false,
     })
     if (picked.canceled || !picked.assets[0]?.base64) return
 

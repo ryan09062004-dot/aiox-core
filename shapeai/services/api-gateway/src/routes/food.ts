@@ -3,7 +3,7 @@ import axios from 'axios'
 import { requireAuth } from '../middleware/auth'
 
 export async function foodRoutes(app: FastifyInstance) {
-  app.post('/food/scan', { preHandler: requireAuth }, async (request, reply) => {
+  app.post('/food/scan', { preHandler: requireAuth, bodyLimit: 6 * 1024 * 1024 }, async (request, reply) => {
     const { image_base64, media_type = 'image/jpeg' } = request.body as {
       image_base64?: string
       media_type?: string
