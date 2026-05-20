@@ -189,22 +189,26 @@ export function AnalysisHistoryItem({ item, isLatest, index, total, prevScore, o
               )}
               <View style={styles.metricDivider} />
               <View style={styles.compactMetric}>
-                <View style={styles.scoreWithTrend}>
-                  <Text style={[styles.compactValue, { color: scoreColor }]}>{score}</Text>
-                  {prevScore != null && (
+                {prevScore != null ? (
+                  <>
                     <View style={styles.trendPill}>
                       <Ionicons
                         name={score - prevScore >= 0 ? 'trending-up' : 'trending-down'}
-                        size={11}
+                        size={20}
                         color={score - prevScore >= 0 ? '#4CAF50' : '#F44336'}
                       />
                       <Text style={[styles.trendText, { color: score - prevScore >= 0 ? '#4CAF50' : '#F44336' }]}>
                         {score - prevScore >= 0 ? '+' : ''}{score - prevScore}
                       </Text>
                     </View>
-                  )}
-                </View>
-                <Text style={styles.compactLabel}>Score</Text>
+                    <Text style={styles.compactLabel}>Evolução</Text>
+                  </>
+                ) : (
+                  <>
+                    <Text style={[styles.compactValue, { color: scoreColor }]}>{score}</Text>
+                    <Text style={styles.compactLabel}>Score</Text>
+                  </>
+                )}
               </View>
             </View>
           ) : (
