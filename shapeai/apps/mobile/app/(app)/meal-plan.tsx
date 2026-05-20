@@ -328,7 +328,10 @@ export default function MealPlanScreen() {
         <TouchableOpacity style={styles.scanButton} onPress={handleFoodScan} disabled={scanning} activeOpacity={0.7}>
           {scanning
             ? <ActivityIndicator size="small" color="#4CAF50" />
-            : <Ionicons name="camera-outline" size={22} color="#4CAF50" />
+            : <>
+                <Ionicons name="camera-outline" size={18} color="#4CAF50" />
+                <Text style={styles.scanButtonText}>Escanear</Text>
+              </>
           }
         </TouchableOpacity>
       </View>
@@ -456,7 +459,18 @@ const styles = StyleSheet.create({
     backgroundColor: '#111',
   },
   headerTitle: { color: '#fff', fontSize: 22, fontWeight: '800' },
-  scanButton: { padding: 6 },
+  scanButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: '#0E2010',
+    borderWidth: 1,
+    borderColor: '#4CAF50',
+    borderRadius: 20,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+  },
+  scanButtonText: { color: '#4CAF50', fontSize: 13, fontWeight: '700' },
 
   scroll: { flex: 1 },
   scrollContent: { padding: 16, gap: 14, paddingBottom: 40 },
