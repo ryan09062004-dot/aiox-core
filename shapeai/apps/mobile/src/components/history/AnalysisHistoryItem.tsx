@@ -1,6 +1,9 @@
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native'
+import { useRef, useEffect, useState } from 'react'
+import { View, Text, StyleSheet, TouchableOpacity, Animated, Easing } from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
 import Svg, { Circle } from 'react-native-svg'
+
+const AnimatedCircle = Animated.createAnimatedComponent(Circle)
 import type { AnalysisSummary } from '@shapeai/shared'
 import { getScoreColor, calculateOverallScore } from '@shapeai/shared'
 
@@ -52,13 +55,36 @@ const STROKE = 8
 const CIRCUMFERENCE = 2 * Math.PI * RADIUS
 
 function ScoreRing({ score, color }: { score: number; color: string }) {
-  const progress = CIRCUMFERENCE - (score / 100) * CIRCUMFERENCE
+  const targetOffset = CIRCUMFERENCE - (score / 100) * CIRCUMFERENCE
   const size = (RADIUS + STROKE) * 2
+
+  const animatedOffset = useRef(new Animated.Value(CIRCUMFERENCE)).current
+  const animatedScore = useRef(new Animated.Value(0)).current
+  const [displayScore, setDisplayScore] = useState(0)
+
+  useEffect(() => {
+    animatedScore.addListener(({ value }) => setDisplayScore(Math.round(value)))
+
+    Animated.timing(animatedOffset, {
+      toValue: targetOffset,
+      duration: 1100,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: false,
+    }).start()
+
+    Animated.timing(animatedScore, {
+      toValue: score,
+      duration: 950,
+      easing: Easing.out(Easing.quad),
+      useNativeDriver: false,
+    }).start()
+
+    return () => { animatedScore.removeAllListeners() }
+  }, [score])
 
   return (
     <View style={{ alignItems: 'center', justifyContent: 'center', width: size, height: size }}>
       <Svg width={size} height={size} style={{ position: 'absolute' }}>
-        {/* trilha */}
         <Circle
           cx={size / 2}
           cy={size / 2}
@@ -67,8 +93,7 @@ function ScoreRing({ score, color }: { score: number; color: string }) {
           strokeWidth={STROKE}
           fill="none"
         />
-        {/* progresso */}
-        <Circle
+        <AnimatedCircle
           cx={size / 2}
           cy={size / 2}
           r={RADIUS}
@@ -76,13 +101,13 @@ function ScoreRing({ score, color }: { score: number; color: string }) {
           strokeWidth={STROKE}
           fill="none"
           strokeDasharray={`${CIRCUMFERENCE} ${CIRCUMFERENCE}`}
-          strokeDashoffset={progress}
+          strokeDashoffset={animatedOffset}
           strokeLinecap="round"
           rotation="-90"
           origin={`${size / 2}, ${size / 2}`}
         />
       </Svg>
-      <Text style={[styles.ringScore, { color }]}>{score}</Text>
+      <Text style={[styles.ringScore, { color }]}>{displayScore}</Text>
       <Text style={styles.ringLabel}>score</Text>
     </View>
   )
