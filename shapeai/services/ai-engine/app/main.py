@@ -4,7 +4,7 @@ load_dotenv()
 import logging
 import os
 from fastapi import FastAPI
-from app.routers import analysis
+from app.routers import analysis, food
 
 logging.basicConfig(
     level=logging.INFO,
@@ -16,6 +16,7 @@ BUILD_VERSION = "20260519-2"
 
 app = FastAPI(title="ShapeAI AI Engine", version="1.0.0")
 app.include_router(analysis.router)
+app.include_router(food.router)
 
 @app.get("/health")
 async def health():

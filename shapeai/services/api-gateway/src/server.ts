@@ -15,6 +15,7 @@ import { profileRoutes } from './routes/profile'
 import { subscriptionRoutes } from './routes/subscription'
 import { pushTokensRoutes } from './routes/push-tokens'
 import { inviteRoutes } from './routes/invite'
+import { foodRoutes } from './routes/food'
 import { sendReanalysisNotifications } from './services/notification.service'
 import { runMigrations } from './db/migrate'
 import { pool } from './db/client'
@@ -63,6 +64,7 @@ async function bootstrap() {
   await app.register(subscriptionRoutes)
   await app.register(pushTokensRoutes)
   await app.register(inviteRoutes)
+  await app.register(foodRoutes)
 
   app.post('/internal/notifications/trigger', async (_req, reply) => {
     sendReanalysisNotifications().catch((err) =>

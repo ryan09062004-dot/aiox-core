@@ -1,16 +1,18 @@
 import { useEffect, useState, useCallback } from 'react'
 import {
   View, Text, ScrollView, StyleSheet,
-  TouchableOpacity, ActivityIndicator, Modal, Image,
+  TouchableOpacity, ActivityIndicator, Modal, Image, Alert,
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { router } from 'expo-router'
 import { Ionicons } from '@expo/vector-icons'
+import * as ImagePicker from 'expo-image-picker'
 import type { MealPlan, MealItem } from '@shapeai/shared'
 import {
   listMealPlans, getMealPlanById, getLatestMealPlan, generateMealPlan,
   type MealPlanSummary,
 } from '../../src/services/meal-plan.service'
+import { analyzeFoodImage, type FoodAnalysis } from '../../src/services/food.service'
 import { getMealImage } from '../../src/constants/meal-images'
 
 const MEAL_ICONS: Record<string, string> = {
@@ -158,6 +160,62 @@ function formatPlanDate(iso: string): string {
   return new Date(iso).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit' })
 }
 
+function FoodScanModal({ result, onClose }: { result: FoodAnalysis; onClose: () => void }) {
+  const confidenceColor = result.confidence === 'alta' ? '#4CAF50' : result.confidence === 'média' ? '#FFB300' : '#64B5F6'
+  const confidenceLabel = result.confidence === 'alta' ? 'Alta precisão' : result.confidence === 'média' ? 'Precisão média' : 'Estimativa aproximada'
+
+  return (
+    <Modal visible animationType="slide" transparent onRequestClose={onClose}>
+      <View style={scanStyles.overlay}>
+        <View style={scanStyles.sheet}>
+          <View style={scanStyles.handle} />
+
+          <View style={scanStyles.header}>
+            <View style={{ flex: 1 }}>
+              <Text style={scanStyles.foodName} numberOfLines={2}>{result.food_name}</Text>
+              <Text style={scanStyles.portion}>{result.portion_description}</Text>
+            </View>
+            <TouchableOpacity onPress={onClose} style={scanStyles.closeBtn}>
+              <Ionicons name="close" size={20} color="#666" />
+            </TouchableOpacity>
+          </View>
+
+          <View style={scanStyles.calorieRow}>
+            <Text style={scanStyles.calorieValue}>{result.calories}</Text>
+            <Text style={scanStyles.calorieUnit}>kcal</Text>
+          </View>
+
+          <View style={scanStyles.macrosGrid}>
+            <View style={scanStyles.macroTile}>
+              <Text style={scanStyles.macroVal}>{result.protein_g}g</Text>
+              <Text style={scanStyles.macroLbl}>Proteína</Text>
+            </View>
+            <View style={scanStyles.macroTile}>
+              <Text style={scanStyles.macroVal}>{result.carbs_g}g</Text>
+              <Text style={scanStyles.macroLbl}>Carboidratos</Text>
+            </View>
+            <View style={scanStyles.macroTile}>
+              <Text style={scanStyles.macroVal}>{result.fat_g}g</Text>
+              <Text style={scanStyles.macroLbl}>Gordura</Text>
+            </View>
+            <View style={scanStyles.macroTile}>
+              <Text style={scanStyles.macroVal}>{result.fiber_g}g</Text>
+              <Text style={scanStyles.macroLbl}>Fibra</Text>
+            </View>
+          </View>
+
+          <View style={[scanStyles.confidencePill, { borderColor: confidenceColor + '55', backgroundColor: confidenceColor + '15' }]}>
+            <View style={[scanStyles.confidenceDot, { backgroundColor: confidenceColor }]} />
+            <Text style={[scanStyles.confidenceText, { color: confidenceColor }]}>{confidenceLabel}</Text>
+          </View>
+
+          <Text style={scanStyles.disclaimer}>Valores estimados por IA. Consulte um nutricionista para informações precisas.</Text>
+        </View>
+      </View>
+    </Modal>
+  )
+}
+
 export default function MealPlanScreen() {
   const insets = useSafeAreaInsets()
   const [summaries, setSummaries] = useState<MealPlanSummary[]>([])
@@ -167,6 +225,9 @@ export default function MealPlanScreen() {
   const [planLoading, setPlanLoading] = useState(false)
   const [generating, setGenerating] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [scanResult, setScanResult] = useState<FoodAnalysis | null>(null)
+  const [scanning, setScanning] = useState(false)
+  const [scanModalOpen, setScanModalOpen] = useState(false)
 
   useEffect(() => {
     async function init() {
@@ -204,6 +265,33 @@ export default function MealPlanScreen() {
     }
   }, [selectedId])
 
+  const handleFoodScan = async () => {
+    const { status } = await ImagePicker.requestCameraPermissionsAsync()
+    if (status !== 'granted') {
+      Alert.alert('Permissão necessária', 'Permita o acesso à câmera para escanear alimentos.')
+      return
+    }
+    const picked = await ImagePicker.launchCameraAsync({
+      mediaTypes: ['images'],
+      quality: 0.5,
+      base64: true,
+      allowsEditing: true,
+      aspect: [4, 3],
+    })
+    if (picked.canceled || !picked.assets[0]?.base64) return
+
+    setScanning(true)
+    try {
+      const analysis = await analyzeFoodImage(picked.assets[0].base64)
+      setScanResult(analysis)
+      setScanModalOpen(true)
+    } catch (e) {
+      Alert.alert('Erro', (e as Error).message ?? 'Não foi possível analisar a imagem.')
+    } finally {
+      setScanning(false)
+    }
+  }
+
   const handleGenerate = useCallback(async () => {
     setGenerating(true)
     setError(null)
@@ -237,7 +325,17 @@ export default function MealPlanScreen() {
     <View style={styles.container}>
       <View style={[styles.header, { paddingTop: insets.top + 16 }]}>
         <Text style={styles.headerTitle}>Nutrição</Text>
+        <TouchableOpacity style={styles.scanButton} onPress={handleFoodScan} disabled={scanning} activeOpacity={0.7}>
+          {scanning
+            ? <ActivityIndicator size="small" color="#4CAF50" />
+            : <Ionicons name="camera-outline" size={22} color="#4CAF50" />
+          }
+        </TouchableOpacity>
       </View>
+
+      {scanModalOpen && scanResult && (
+        <FoodScanModal result={scanResult} onClose={() => setScanModalOpen(false)} />
+      )}
 
       {summaries.length > 1 && (
         <ScrollView
@@ -358,6 +456,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#111',
   },
   headerTitle: { color: '#fff', fontSize: 22, fontWeight: '800' },
+  scanButton: { padding: 6 },
 
   scroll: { flex: 1 },
   scrollContent: { padding: 16, gap: 14, paddingBottom: 40 },
@@ -495,4 +594,58 @@ const styles = StyleSheet.create({
   },
   modalContent: { padding: 20, gap: 12, paddingBottom: 44 },
   modalTitle: { color: '#fff', fontSize: 20, fontWeight: '800', lineHeight: 26 },
+})
+
+const scanStyles = StyleSheet.create({
+  overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.7)', justifyContent: 'flex-end' },
+  sheet: {
+    backgroundColor: '#111',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    padding: 24,
+    paddingBottom: 40,
+    gap: 16,
+    borderWidth: 1,
+    borderColor: '#1E1E1E',
+  },
+  handle: {
+    width: 36, height: 4, borderRadius: 2,
+    backgroundColor: '#2A2A2A',
+    alignSelf: 'center',
+    marginBottom: 4,
+  },
+  header: { flexDirection: 'row', alignItems: 'flex-start', gap: 12 },
+  foodName: { color: '#fff', fontSize: 20, fontWeight: '800', lineHeight: 26, flex: 1 },
+  portion: { color: '#555', fontSize: 13, marginTop: 4 },
+  closeBtn: {
+    width: 32, height: 32, borderRadius: 16,
+    backgroundColor: '#1A1A1A',
+    alignItems: 'center', justifyContent: 'center',
+  },
+  calorieRow: { flexDirection: 'row', alignItems: 'baseline', gap: 4 },
+  calorieValue: { color: '#4CAF50', fontSize: 52, fontWeight: '900', lineHeight: 56 },
+  calorieUnit: { color: '#4CAF50', fontSize: 16, fontWeight: '700', marginBottom: 4 },
+  macrosGrid: {
+    flexDirection: 'row',
+    backgroundColor: '#0F0F0F',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#1A1A1A',
+    overflow: 'hidden',
+  },
+  macroTile: {
+    flex: 1, alignItems: 'center', paddingVertical: 14,
+    borderRightWidth: 1, borderRightColor: '#1A1A1A',
+  },
+  macroVal: { color: '#fff', fontSize: 16, fontWeight: '800' },
+  macroLbl: { color: '#555', fontSize: 10, fontWeight: '600', marginTop: 3 },
+  confidencePill: {
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    alignSelf: 'flex-start',
+    borderWidth: 1, borderRadius: 20,
+    paddingHorizontal: 12, paddingVertical: 5,
+  },
+  confidenceDot: { width: 6, height: 6, borderRadius: 3 },
+  confidenceText: { fontSize: 12, fontWeight: '600' },
+  disclaimer: { color: '#333', fontSize: 11, lineHeight: 16 },
 })
