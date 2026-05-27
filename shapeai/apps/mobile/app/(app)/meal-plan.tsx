@@ -331,7 +331,7 @@ export default function MealPlanScreen() {
             ? <ActivityIndicator size="small" color="#4CAF50" />
             : <>
                 <Ionicons name="camera-outline" size={18} color="#ccc" />
-                <Text style={styles.scanButtonText}>Escanear</Text>
+                <Text style={styles.scanButtonText}>Ver calorias</Text>
               </>
           }
         </TouchableOpacity>
