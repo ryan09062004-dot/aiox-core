@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import {
   View, Text, ScrollView, StyleSheet,
-  TouchableOpacity, ActivityIndicator, Modal, Image, Alert,
+  TouchableOpacity, ActivityIndicator, Modal, Pressable, Image, Alert,
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { router } from 'expo-router'
@@ -170,46 +170,48 @@ function FoodScanModal({ result, onClose }: { result: FoodAnalysis; onClose: () 
         <View style={scanStyles.sheet}>
           <View style={scanStyles.handle} />
 
-          <View style={scanStyles.header}>
-            <View style={{ flex: 1 }}>
-              <Text style={scanStyles.foodName} numberOfLines={2}>{result.food_name}</Text>
-              <Text style={scanStyles.portion}>{result.portion_description}</Text>
+          <ScrollView showsVerticalScrollIndicator={false} bounces={false} contentContainerStyle={{ gap: 16 }}>
+            <View style={scanStyles.header}>
+              <View style={{ flex: 1 }}>
+                <Text style={scanStyles.foodName}>{result.food_name}</Text>
+                <Text style={scanStyles.portion}>{result.portion_description}</Text>
+              </View>
+              <TouchableOpacity onPress={onClose} style={scanStyles.closeBtn}>
+                <Ionicons name="close" size={20} color="#666" />
+              </TouchableOpacity>
             </View>
-            <TouchableOpacity onPress={onClose} style={scanStyles.closeBtn}>
-              <Ionicons name="close" size={20} color="#666" />
-            </TouchableOpacity>
-          </View>
 
-          <View style={scanStyles.calorieRow}>
-            <Text style={scanStyles.calorieValue}>{result.calories}</Text>
-            <Text style={scanStyles.calorieUnit}>kcal</Text>
-          </View>
+            <View style={scanStyles.calorieRow}>
+              <Text style={scanStyles.calorieValue}>{result.calories}</Text>
+              <Text style={scanStyles.calorieUnit}>kcal</Text>
+            </View>
 
-          <View style={scanStyles.macrosGrid}>
-            <View style={scanStyles.macroTile}>
-              <Text style={scanStyles.macroVal}>{result.protein_g}g</Text>
-              <Text style={scanStyles.macroLbl}>Proteína</Text>
+            <View style={scanStyles.macrosGrid}>
+              <View style={scanStyles.macroTile}>
+                <Text style={scanStyles.macroVal}>{result.protein_g}g</Text>
+                <Text style={scanStyles.macroLbl}>Proteína</Text>
+              </View>
+              <View style={scanStyles.macroTile}>
+                <Text style={scanStyles.macroVal}>{result.carbs_g}g</Text>
+                <Text style={scanStyles.macroLbl}>Carboidratos</Text>
+              </View>
+              <View style={scanStyles.macroTile}>
+                <Text style={scanStyles.macroVal}>{result.fat_g}g</Text>
+                <Text style={scanStyles.macroLbl}>Gordura</Text>
+              </View>
+              <View style={scanStyles.macroTile}>
+                <Text style={scanStyles.macroVal}>{result.fiber_g}g</Text>
+                <Text style={scanStyles.macroLbl}>Fibra</Text>
+              </View>
             </View>
-            <View style={scanStyles.macroTile}>
-              <Text style={scanStyles.macroVal}>{result.carbs_g}g</Text>
-              <Text style={scanStyles.macroLbl}>Carboidratos</Text>
-            </View>
-            <View style={scanStyles.macroTile}>
-              <Text style={scanStyles.macroVal}>{result.fat_g}g</Text>
-              <Text style={scanStyles.macroLbl}>Gordura</Text>
-            </View>
-            <View style={scanStyles.macroTile}>
-              <Text style={scanStyles.macroVal}>{result.fiber_g}g</Text>
-              <Text style={scanStyles.macroLbl}>Fibra</Text>
-            </View>
-          </View>
 
-          <View style={[scanStyles.confidencePill, { borderColor: confidenceColor + '55', backgroundColor: confidenceColor + '15' }]}>
-            <View style={[scanStyles.confidenceDot, { backgroundColor: confidenceColor }]} />
-            <Text style={[scanStyles.confidenceText, { color: confidenceColor }]}>{confidenceLabel}</Text>
-          </View>
+            <View style={[scanStyles.confidencePill, { borderColor: confidenceColor + '55', backgroundColor: confidenceColor + '15' }]}>
+              <View style={[scanStyles.confidenceDot, { backgroundColor: confidenceColor }]} />
+              <Text style={[scanStyles.confidenceText, { color: confidenceColor }]}>{confidenceLabel}</Text>
+            </View>
 
-          <Text style={scanStyles.disclaimer}>Valores estimados por IA. Consulte um nutricionista para informações precisas.</Text>
+            <Text style={scanStyles.disclaimer}>Valores estimados por IA. Consulte um nutricionista para informações precisas.</Text>
+          </ScrollView>
         </View>
       </View>
     </Modal>
@@ -228,6 +230,7 @@ export default function MealPlanScreen() {
   const [scanResult, setScanResult] = useState<FoodAnalysis | null>(null)
   const [scanning, setScanning] = useState(false)
   const [scanModalOpen, setScanModalOpen] = useState(false)
+  const [showPicker, setShowPicker] = useState(false)
 
   useEffect(() => {
     async function init() {
@@ -322,8 +325,41 @@ export default function MealPlanScreen() {
   const totalCarbs = meals.reduce((s, m) => s + (m.carbs_g ?? 0), 0)
   const totalFat = meals.reduce((s, m) => s + (m.fats_g ?? 0), 0)
 
+  const selectedIndex = summaries.findIndex(s => s.id === selectedId)
+
+  const handleSelectPlan = async (id: string) => {
+    setShowPicker(false)
+    await selectPlan(id)
+  }
+
   return (
     <View style={styles.container}>
+      <Modal visible={showPicker} transparent animationType="fade" onRequestClose={() => setShowPicker(false)}>
+        <Pressable style={styles.pickerOverlay} onPress={() => setShowPicker(false)}>
+          <View style={styles.pickerMenu}>
+            <Text style={styles.pickerTitle}>Selecionar plano</Text>
+            {summaries.map((s, i) => {
+              const isActive = s.id === selectedId
+              return (
+                <TouchableOpacity
+                  key={s.id}
+                  style={styles.pickerOption}
+                  onPress={() => handleSelectPlan(s.id)}
+                >
+                  <View>
+                    <Text style={[styles.pickerOptionText, isActive && styles.pickerOptionTextActive]}>
+                      {i === 0 ? 'Mais recente' : `Plano de ${formatPlanDate(s.generated_at)}`}
+                    </Text>
+                    <Text style={styles.pickerOptionDate}>{formatPlanDate(s.generated_at)}</Text>
+                  </View>
+                  {isActive && <Ionicons name="checkmark" size={16} color="#4CAF50" />}
+                </TouchableOpacity>
+              )
+            })}
+          </View>
+        </Pressable>
+      </Modal>
+
       <View style={[styles.header, { paddingTop: insets.top + 16 }]}>
         <Text style={styles.headerTitle}>Nutrição</Text>
         <TouchableOpacity style={styles.scanButton} onPress={handleFoodScan} disabled={scanning} activeOpacity={0.7}>
@@ -341,31 +377,6 @@ export default function MealPlanScreen() {
         <FoodScanModal result={scanResult} onClose={() => setScanModalOpen(false)} />
       )}
 
-      {summaries.length > 1 && (
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          style={styles.selectorScroll}
-          contentContainerStyle={styles.selectorContent}
-        >
-          {summaries.map((s, i) => {
-            const isActive = s.id === selectedId
-            return (
-              <TouchableOpacity
-                key={s.id}
-                style={[styles.selectorPill, isActive && styles.selectorPillActive]}
-                onPress={() => selectPlan(s.id)}
-                activeOpacity={0.75}
-              >
-                <Text style={[styles.selectorPillText, isActive && styles.selectorPillTextActive]}>
-                  {i === 0 ? 'Mais recente' : formatPlanDate(s.generated_at)}
-                </Text>
-              </TouchableOpacity>
-            )
-          })}
-        </ScrollView>
-      )}
-
       {loading ? (
         <View style={styles.center}>
           <ActivityIndicator size="large" color="#4CAF50" />
@@ -378,6 +389,14 @@ export default function MealPlanScreen() {
             </View>
           ) : (
             <>
+              {summaries.length > 1 && (
+                <TouchableOpacity style={styles.pickerTrigger} onPress={() => setShowPicker(true)}>
+                  <Text style={styles.pickerTriggerText}>
+                    {selectedIndex <= 0 ? 'Mais recente' : `Plano de ${formatPlanDate(summaries[selectedIndex]?.generated_at ?? '')}`}
+                  </Text>
+                  <Ionicons name="chevron-down" size={12} color="#555" />
+                </TouchableOpacity>
+              )}
               <View style={styles.summaryCard}>
                 <Text style={styles.summaryTitle}>Total do Dia</Text>
                 <View style={styles.summaryRow}>
@@ -483,16 +502,19 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
 
-  selectorScroll: { backgroundColor: '#0A0A0A', borderBottomWidth: 1, borderBottomColor: '#1A1A1A' },
-  selectorContent: { paddingHorizontal: 16, paddingVertical: 10, gap: 8, flexDirection: 'row' },
-  selectorPill: {
-    paddingHorizontal: 14, paddingVertical: 7,
-    borderRadius: 20, backgroundColor: '#111',
-    borderWidth: 1, borderColor: '#1E1E1E',
+  pickerTrigger: {
+    flexDirection: 'row', alignItems: 'center', gap: 5,
+    alignSelf: 'center',
+    marginBottom: 4,
   },
-  selectorPillActive: { backgroundColor: '#1A2E1A', borderColor: '#4CAF50' },
-  selectorPillText: { color: '#555', fontSize: 13, fontWeight: '600' },
-  selectorPillTextActive: { color: '#4CAF50' },
+  pickerTriggerText: { color: '#555', fontSize: 13, fontWeight: '500' },
+  pickerOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'flex-end' },
+  pickerMenu: { backgroundColor: '#111', borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 24 },
+  pickerTitle: { fontSize: 13, color: '#555', fontWeight: '600', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 16 },
+  pickerOption: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: '#1A1A1A' },
+  pickerOptionText: { fontSize: 16, color: '#888' },
+  pickerOptionTextActive: { color: '#fff', fontWeight: '600' },
+  pickerOptionDate: { fontSize: 12, color: '#444', marginTop: 2 },
 
   summaryCard: {
     backgroundColor: '#111',
@@ -524,6 +546,7 @@ const styles = StyleSheet.create({
   mealCal: { color: '#555', fontSize: 12, fontWeight: '600' },
   mealName: { color: '#fff', fontSize: 17, fontWeight: '700', lineHeight: 22 },
   mealDescription: { color: '#666', fontSize: 13, lineHeight: 18 },
+  macroInline: { color: '#444', fontSize: 12, fontWeight: '500' },
 
   cardFooter: {
     flexDirection: 'row',
@@ -618,8 +641,8 @@ const scanStyles = StyleSheet.create({
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     padding: 24,
-    paddingBottom: 40,
-    gap: 16,
+    paddingBottom: 48,
+    maxHeight: '90%',
     borderWidth: 1,
     borderColor: '#1E1E1E',
   },

@@ -2,18 +2,18 @@ import { FastifyInstance } from 'fastify'
 import axios from 'axios'
 import { requireAuth } from '../middleware/auth'
 
-const FOOD_PROMPT = `Analyze this food image and return ONLY a valid JSON object (no markdown, no explanation) with these exact fields:
+const FOOD_PROMPT = `Analise esta imagem de alimento e retorne SOMENTE um objeto JSON válido (sem markdown, sem explicação) com exatamente estes campos:
 {
-  "food_name": "name of the food or meal",
-  "portion_description": "estimated portion size (e.g. '1 plate ~350g')",
-  "calories": <number>,
-  "protein_g": <number>,
-  "carbs_g": <number>,
-  "fat_g": <number>,
-  "fiber_g": <number>,
+  "food_name": "nome do alimento ou refeição em português",
+  "portion_description": "tamanho estimado da porção (ex: '1 prato ~350g')",
+  "calories": <número>,
+  "protein_g": <número>,
+  "carbs_g": <número>,
+  "fat_g": <número>,
+  "fiber_g": <número>,
   "confidence": "alta" | "média" | "baixa"
 }
-Use your best estimate based on visual portion size. All numeric values must be integers.`
+Use sua melhor estimativa baseada no tamanho visual da porção. Todos os valores numéricos devem ser inteiros. Responda sempre em português.`
 
 export async function foodRoutes(app: FastifyInstance) {
   app.post('/food/scan', { preHandler: requireAuth, bodyLimit: 6 * 1024 * 1024 }, async (request, reply) => {
