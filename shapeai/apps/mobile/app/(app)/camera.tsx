@@ -159,11 +159,7 @@ export default function CameraScreen() {
       router.push(`/(app)/analysis/${analysis_id}`)
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Erro desconhecido'
-      if (msg === 'SUBSCRIPTION_REQUIRED') {
-        router.push('/(app)/paywall')
-      } else {
-        Alert.alert('Erro', `Falha ao processar: ${msg}`)
-      }
+      Alert.alert('Erro', `Falha ao processar: ${msg}`)
       setIsUploading(false)
     }
   }

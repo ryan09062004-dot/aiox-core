@@ -16,8 +16,8 @@ import type { TextStyle, StyleProp } from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
 import { router, useFocusEffect } from 'expo-router'
 import { getUserProfile } from '../../src/services/profile.service'
-import { sendChatMessage, getChatUsage } from '../../src/services/chat.service'
-import type { ChatUsage, ChatResponse, ChatLimitError, HistoryEntry } from '../../src/services/chat.service'
+import { sendChatMessage } from '../../src/services/chat.service'
+import type { ChatResponse, HistoryEntry } from '../../src/services/chat.service'
 import type { UserProfile } from '@shapeai/shared'
 
 // Renders **bold** segments inside a message bubble
@@ -64,8 +64,6 @@ export default function CoachScreen() {
   const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState('')
   const [isLoading, setIsLoading] = useState(false)
-  const [usage, setUsage] = useState<ChatUsage | null>(null)
-  const [limitReached, setLimitReached] = useState(false)
   const [coachName, setCoachName] = useState('Rafael')
   const scrollRef = useRef<ScrollView>(null)
 
@@ -77,29 +75,17 @@ export default function CoachScreen() {
   )
 
   async function loadInitialData() {
-    const [profileResult, usageResult] = await Promise.allSettled([
-      getUserProfile(),
-      getChatUsage(),
-    ])
-
-    if (profileResult.status === 'fulfilled') {
-      const profile = profileResult.value as UserProfile
+    const profileResult = await getUserProfile().catch(() => null)
+    if (profileResult) {
+      const profile = profileResult as UserProfile
       const persona = profile.coach_persona ?? 'rafael'
       setCoachName(PERSONA_NAMES[persona] ?? 'Rafael')
-    }
-
-    if (usageResult.status === 'fulfilled') {
-      const u = usageResult.value
-      setUsage(u)
-      if (u.limit !== null && u.count >= u.limit) {
-        setLimitReached(true)
-      }
     }
   }
 
   async function handleSend(text?: string) {
     const messageText = (text ?? input).trim()
-    if (!messageText || isLoading || limitReached) return
+    if (!messageText || isLoading) return
 
     const userMsg: Message = { id: `u-${Date.now()}`, role: 'user', text: messageText }
     setMessages((prev) => [...prev, userMsg])
@@ -115,22 +101,10 @@ export default function CoachScreen() {
         content: m.text,
       }))
 
-      const result = await sendChatMessage(messageText, history)
-
-      if ('type' in result) {
-        const limitErr = result as ChatLimitError
-        setLimitReached(true)
-        setUsage(limitErr.usage)
-      } else {
-        const resp = result as ChatResponse
-        const coachMsg: Message = { id: `c-${Date.now()}`, role: 'coach', text: resp.reply }
-        setMessages((prev) => [...prev, coachMsg])
-        setUsage(resp.usage)
-        if (resp.usage.limit !== null && resp.usage.count >= resp.usage.limit) {
-          setLimitReached(true)
-        }
-        if (resp.persona) setCoachName(PERSONA_NAMES[resp.persona] ?? coachName)
-      }
+      const resp = await sendChatMessage(messageText, history)
+      const coachMsg: Message = { id: `c-${Date.now()}`, role: 'coach', text: resp.reply }
+      setMessages((prev) => [...prev, coachMsg])
+      if (resp.persona) setCoachName(PERSONA_NAMES[resp.persona] ?? coachName)
     } catch (err: unknown) {
       const isOverload = (err as Error)?.message === 'CLAUDE_UNAVAILABLE'
       const errMsg: Message = {
@@ -147,7 +121,7 @@ export default function CoachScreen() {
     }
   }
 
-  const showSuggestions = messages.length === 0 && !limitReached
+  const showSuggestions = messages.length === 0
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['top']}>
@@ -206,22 +180,6 @@ export default function CoachScreen() {
             </View>
           )}
 
-          {limitReached && (
-            <View style={styles.limitCard}>
-              <Ionicons name="lock-closed" size={24} color="#888" style={styles.limitIcon} />
-              <Text style={styles.limitTitle}>Limite diário atingido</Text>
-              <Text style={styles.limitBody}>
-                Você usou todas as {usage?.limit} mensagens gratuitas de hoje.
-                Faça upgrade para Pro e converse sem limites.
-              </Text>
-              <TouchableOpacity
-                style={styles.upgradeBtn}
-                onPress={() => router.push('/(app)/paywall')}
-              >
-                <Text style={styles.upgradeBtnText}>Fazer upgrade para Pro →</Text>
-              </TouchableOpacity>
-            </View>
-          )}
         </ScrollView>
 
         {/* Quick suggestions */}
@@ -240,16 +198,8 @@ export default function CoachScreen() {
           </ScrollView>
         )}
 
-        {/* Usage counter (Free only) */}
-        {usage && usage.limit !== null && !limitReached && (
-          <Text style={styles.usageCounter}>
-            {usage.count}/{usage.limit} mensagens hoje
-          </Text>
-        )}
-
         {/* Input bar */}
-        {!limitReached && (
-          <View style={styles.inputBar}>
+        <View style={styles.inputBar}>
             <TextInput
               style={styles.textInput}
               value={input}
@@ -270,7 +220,6 @@ export default function CoachScreen() {
               <Ionicons name="send" size={18} color="#fff" />
             </TouchableOpacity>
           </View>
-        )}
       </KeyboardAvoidingView>
     </SafeAreaView>
   )
@@ -315,30 +264,6 @@ const styles = StyleSheet.create({
   userText: { color: '#fff' },
   coachText: { color: '#eee' },
 
-  limitCard: {
-    backgroundColor: '#111',
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: '#333',
-    padding: 20,
-    alignItems: 'center',
-    marginTop: 16,
-    gap: 8,
-  },
-  limitIcon: { marginBottom: 4 },
-  limitTitle: { color: '#fff', fontSize: 16, fontWeight: '700' },
-  limitBody: { color: '#888', fontSize: 14, textAlign: 'center', lineHeight: 20 },
-  upgradeBtn: {
-    marginTop: 8,
-    backgroundColor: '#0D1F0D',
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: '#4CAF50',
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-  },
-  upgradeBtnText: { color: '#4CAF50', fontSize: 14, fontWeight: '600' },
-
   suggestionsRow: { flexGrow: 0 },
   suggestionsContent: { paddingHorizontal: 16, paddingVertical: 8, gap: 8 },
   chip: {
@@ -350,13 +275,6 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
   },
   chipText: { color: '#aaa', fontSize: 13 },
-
-  usageCounter: {
-    color: '#444',
-    fontSize: 12,
-    textAlign: 'center',
-    paddingBottom: 4,
-  },
 
   inputBar: {
     flexDirection: 'row',

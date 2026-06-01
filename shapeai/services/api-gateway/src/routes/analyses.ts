@@ -3,22 +3,11 @@ import axios from 'axios'
 import { pool } from '../db/client'
 import { requireAuth } from '../middleware/auth'
 import { generatePresignedUploadUrl, generatePresignedGetUrl } from '../services/s3.service'
-import { checkFreemiumLimit } from '../services/freemium.service'
 
 export async function analysesRoutes(app: FastifyInstance) {
   // POST /analyses — inicia análise e retorna presigned URLs
   app.post('/analyses', { preHandler: requireAuth }, async (request, reply) => {
     const userId = request.authUser.id
-
-    try {
-      await checkFreemiumLimit(pool, userId)
-    } catch (err: unknown) {
-      const e = err as Error & { statusCode?: number }
-      if (e.message === 'SUBSCRIPTION_REQUIRED') {
-        return reply.status(402).send({ error: 'SUBSCRIPTION_REQUIRED' })
-      }
-      throw err
-    }
 
     // INSERT analysis
     const insertResult = await pool.query<{ id: string }>(

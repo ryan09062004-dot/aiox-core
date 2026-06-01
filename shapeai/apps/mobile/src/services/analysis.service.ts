@@ -106,23 +106,19 @@ export async function startAnalysis(): Promise<StartAnalysisResponse> {
 }
 
 export async function uploadPhoto(presignedUrl: string, photoUri: string): Promise<void> {
-  return new Promise((resolve, reject) => {
-    const xhr = new XMLHttpRequest()
-    xhr.open('PUT', presignedUrl)
-    xhr.setRequestHeader('Content-Type', 'image/jpeg')
-    xhr.onreadystatechange = () => {
-      if (xhr.readyState !== 4) return
-      if (xhr.status >= 200 && xhr.status < 300) {
-        resolve()
-      } else {
-        reject(new Error(`S3 upload failed: HTTP ${xhr.status}`))
-      }
-    }
-    xhr.onerror = () => reject(new Error('Upload failed: network error'))
-    // React Native XHR suporta envio direto de file URI
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    xhr.send({ uri: photoUri, type: 'image/jpeg', name: 'photo.jpg' } as any)
+  // fetch com blob lê o file URI corretamente em iOS (ph://, file://) e Android
+  const response = await fetch(photoUri)
+  const blob = await response.blob()
+
+  const upload = await fetch(presignedUrl, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'image/jpeg' },
+    body: blob,
   })
+
+  if (!upload.ok) {
+    throw new Error(`S3 upload failed: HTTP ${upload.status}`)
+  }
 }
 
 export async function triggerProcessing(analysisId: string): Promise<void> {

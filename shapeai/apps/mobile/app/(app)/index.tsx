@@ -16,7 +16,6 @@ import AsyncStorage from '@react-native-async-storage/async-storage'
 import { useAuthStore } from '../../src/stores/auth.store'
 import { PHOTO_TIP_STORAGE_KEY } from './photo-tip'
 import { WorkoutShareCard } from '../../src/components/workout/WorkoutShareCard'
-import { useSubscription } from '../../src/hooks/useSubscription'
 import { getUserProfile } from '../../src/services/profile.service'
 import { listAnalyses, getAnalysisResult } from '../../src/services/analysis.service'
 import { GOAL_LABEL, getScoreColor } from '@shapeai/shared'
@@ -147,9 +146,6 @@ function Ring({ pct, size = 56 }: { pct: number; size?: number }) {
 export default function HomeScreen() {
   const insets = useSafeAreaInsets()
   const { session, isGuest } = useAuthStore()
-  const { subscription } = useSubscription()
-  const isPro = subscription?.status === 'pro'
-
   const [goal, setGoal] = useState<PrimaryGoal | null>(null)
   const [weight, setWeight] = useState<number | null>(null)
   const [lastAnalysis, setLastAnalysis] = useState<AnalysisSummary | null | undefined>(undefined)
@@ -533,8 +529,7 @@ export default function HomeScreen() {
             </View>
           </View>
           <View style={styles.headerRight}>
-            {isPro ? (
-              <LinearGradient
+            <LinearGradient
                 colors={['#00FF85', '#FFE500']}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 0 }}
@@ -548,11 +543,6 @@ export default function HomeScreen() {
                   </MaskedView>
                 </View>
               </LinearGradient>
-            ) : (
-              <View style={styles.badgeFree}>
-                <Text style={styles.badgeFreeText}>Free</Text>
-              </View>
-            )}
             <TouchableOpacity onPress={() => router.push('/(app)/profile')} activeOpacity={0.7} style={styles.gearBtn}>
               <Ionicons name="settings-outline" size={22} color="#555" />
             </TouchableOpacity>
@@ -600,11 +590,6 @@ const styles = StyleSheet.create({
     paddingVertical: 0, minWidth: 80,
   },
   tagline: { color: '#666', fontSize: 12, marginTop: 3 },
-  badgeFree: {
-    paddingHorizontal: 12, paddingVertical: 4, borderRadius: 12,
-    backgroundColor: '#1A1A1A',
-  },
-  badgeFreeText: { color: '#555', fontSize: 12, fontWeight: '600' },
   badgeProGradient: {
     borderRadius: 12,
     padding: 1,

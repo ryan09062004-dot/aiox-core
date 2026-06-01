@@ -1,7 +1,6 @@
 import { create } from 'zustand'
 import { Session } from '@supabase/supabase-js'
 import { supabase } from '../services/supabase.client'
-import { purchasesLogIn, purchasesLogOut } from '../services/purchases.service'
 
 interface AuthState {
   session: Session | null
@@ -38,7 +37,6 @@ export const useAuthStore = create<AuthState>((set) => ({
     try {
       const { error, data } = await supabase.auth.signInWithPassword({ email, password })
       if (error) return mapAuthError(error.message)
-      if (data.user) purchasesLogIn(data.user.id).catch(() => {})
       set({ isGuest: false })
       return null
     } catch {
@@ -53,7 +51,6 @@ export const useAuthStore = create<AuthState>((set) => ({
     try {
       const { error, data } = await supabase.auth.signUp({ email, password })
       if (error) return mapAuthError(error.message)
-      if (data.user) purchasesLogIn(data.user.id).catch(() => {})
       set({ isGuest: false })
       return null
     } catch {
@@ -64,7 +61,6 @@ export const useAuthStore = create<AuthState>((set) => ({
   },
 
   signOut: async () => {
-    await purchasesLogOut().catch(() => {})
     await supabase.auth.signOut()
     set({ session: null, isGuest: false })
   },
