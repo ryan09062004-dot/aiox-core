@@ -23,7 +23,6 @@ import Svg, { Circle, Text as SvgText } from 'react-native-svg'
 const AnimatedCircle = Animated.createAnimatedComponent(Circle)
 import { getAnalysisResult, AnalysisResult, BodyComposition, MuscleScores } from '../../../../src/services/analysis.service'
 import ReportSectionCard, { ReportSection } from '../../../../src/components/report/ReportSectionCard'
-import { useSubscription } from '../../../../src/hooks/useSubscription'
 
 const { width: SCREEN_W } = Dimensions.get('window')
 
@@ -438,8 +437,7 @@ export default function ReportScreen() {
   const [error, setError] = useState<string | null>(null)
   const [currentPage, setCurrentPage] = useState(0)
   const pagerRef = useRef<ScrollView>(null)
-  const { subscription } = useSubscription()
-  const isPro = subscription?.status === 'pro'
+  const isPro = true
 
   useEffect(() => {
     if (!id) return
