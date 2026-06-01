@@ -35,7 +35,7 @@ export const useAuthStore = create<AuthState>((set) => ({
   signIn: async (email: string, password: string) => {
     set({ isLoading: true })
     try {
-      const { error, data } = await supabase.auth.signInWithPassword({ email, password })
+      const { error } = await supabase.auth.signInWithPassword({ email, password })
       if (error) return mapAuthError(error.message)
       set({ isGuest: false })
       return null
@@ -49,7 +49,7 @@ export const useAuthStore = create<AuthState>((set) => ({
   signUp: async (email: string, password: string) => {
     set({ isLoading: true })
     try {
-      const { error, data } = await supabase.auth.signUp({ email, password })
+      const { error } = await supabase.auth.signUp({ email, password })
       if (error) return mapAuthError(error.message)
       set({ isGuest: false })
       return null

@@ -133,7 +133,7 @@ export default function CoachScreen() {
         {/* Header */}
         <View style={styles.header}>
           <Image
-            source={PERSONA_IMAGES[coachName]}
+            source={PERSONA_IMAGES[coachName] ?? PERSONA_IMAGES['Rafael']}
             style={styles.avatarCircle}
           />
           <View style={styles.headerText}>
