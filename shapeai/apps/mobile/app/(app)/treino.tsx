@@ -136,13 +136,12 @@ export default function TreinoTab() {
   if (weeks.length === 0) {
     return (
       <View style={styles.emptyContainer}>
-        <Ionicons name="barbell-outline" size={72} color="#1E1E1E" />
+        <Ionicons name="barbell-outline" size={56} color="#2a2a2a" />
         <Text style={styles.emptyTitle}>Nenhum plano de treino</Text>
         <Text style={styles.emptySub}>
           Faça sua avaliação de shape para receber um plano personalizado com base no seu corpo e objetivo.
         </Text>
         <TouchableOpacity style={styles.ctaBtn} onPress={handleNewAnalysis}>
-          <Ionicons name="scan" size={18} color="#fff" />
           <Text style={styles.ctaBtnText}>Fazer Avaliação</Text>
         </TouchableOpacity>
       </View>
@@ -313,10 +312,11 @@ const styles = StyleSheet.create({
   emptySub: { color: '#555', fontSize: 14, textAlign: 'center', lineHeight: 20 },
   ctaBtn: {
     backgroundColor: '#4CAF50', borderRadius: 14,
-    paddingVertical: 14, paddingHorizontal: 24,
-    flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 8,
+    paddingVertical: 14, paddingHorizontal: 28,
+    alignItems: 'center', justifyContent: 'center',
+    minWidth: 220,
   },
-  ctaBtnText: { color: '#fff', fontSize: 15, fontWeight: '700' },
+  ctaBtnText: { color: '#0A0A0A', fontSize: 15, fontWeight: '700' },
 
   headerCard: {
     backgroundColor: '#111',

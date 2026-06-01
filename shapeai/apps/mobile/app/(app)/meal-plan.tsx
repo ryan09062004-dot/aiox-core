@@ -245,7 +245,27 @@ export default function MealPlanScreen() {
           setSelectedId(latest.value.id ?? null)
         } else {
           const msg = (latest.reason as Error).message ?? ''
-          if (!msg.includes('NOT_FOUND') && !msg.includes('404')) setError(msg)
+          if (!msg.includes('NOT_FOUND') && !msg.includes('404')) {
+            setError(msg)
+          } else {
+            // Nenhum plano existe — gera automaticamente
+            setLoading(false)
+            setGenerating(true)
+            try {
+              const newPlan = await generateMealPlan()
+              setPlan(newPlan)
+              setSelectedId(newPlan.id ?? null)
+              setSummaries([{ id: newPlan.id, goal: newPlan.goal, generated_at: newPlan.generated_at }])
+            } catch (genErr: unknown) {
+              const e = genErr as Error
+              if (!e.message.includes('402') && !e.message.includes('SUBSCRIPTION_REQUIRED')) {
+                setError(e.message ?? 'Erro ao gerar plano alimentar.')
+              }
+            } finally {
+              setGenerating(false)
+            }
+            return
+          }
         }
       } finally {
         setLoading(false)

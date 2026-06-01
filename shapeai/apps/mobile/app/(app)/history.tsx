@@ -90,7 +90,7 @@ export default function HistoryScreen() {
   if (analyses.length === 0) {
     return (
       <View style={styles.centered}>
-        <Text style={styles.emptyIcon}>📊</Text>
+        <Ionicons name="bar-chart-outline" size={56} color="#2a2a2a" />
         <Text style={styles.emptyTitle}>Nenhuma avaliação ainda</Text>
         <Text style={styles.emptySubtitle}>Capture suas fotos para começar a acompanhar sua evolução.</Text>
         <TouchableOpacity style={styles.startButton} onPress={() => router.push('/(app)/camera')} testID="btn-comecar-agora">
@@ -188,17 +188,16 @@ export default function HistoryScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#0A0A0A' },
-  centered: { flex: 1, backgroundColor: '#0A0A0A', justifyContent: 'center', alignItems: 'center', padding: 32 },
+  centered: { flex: 1, backgroundColor: '#0A0A0A', justifyContent: 'center', alignItems: 'center', padding: 32, gap: 16 },
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 24, paddingBottom: 16 },
   title: { fontSize: 24, fontWeight: 'bold', color: '#fff' },
   countBadge: { backgroundColor: '#1A1A1A', borderRadius: 20, paddingHorizontal: 10, paddingVertical: 4, borderWidth: 1, borderColor: '#2A2A2A' },
   countText: { color: '#888', fontSize: 13, fontWeight: '600' },
   list: { paddingHorizontal: 16, paddingBottom: 32 },
-  emptyIcon: { fontSize: 48, marginBottom: 16 },
-  emptyTitle: { fontSize: 18, fontWeight: '600', color: '#fff', textAlign: 'center', marginBottom: 8 },
-  emptySubtitle: { fontSize: 14, color: '#666', textAlign: 'center', marginBottom: 32 },
-  startButton: { backgroundColor: '#4CAF50', borderRadius: 16, paddingVertical: 14, paddingHorizontal: 32 },
-  startButtonText: { color: '#fff', fontSize: 16, fontWeight: '600' },
+  emptyTitle: { fontSize: 20, fontWeight: '700', color: '#fff', textAlign: 'center' },
+  emptySubtitle: { fontSize: 14, color: '#666', textAlign: 'center', lineHeight: 22, maxWidth: 280 },
+  startButton: { backgroundColor: '#4CAF50', borderRadius: 14, paddingVertical: 14, paddingHorizontal: 28, alignItems: 'center', justifyContent: 'center', minWidth: 220 },
+  startButtonText: { color: '#0A0A0A', fontSize: 15, fontWeight: '700' },
   loadingMore: { alignItems: 'center', paddingVertical: 20 },
   sectionLabel: {
     fontSize: 11,
