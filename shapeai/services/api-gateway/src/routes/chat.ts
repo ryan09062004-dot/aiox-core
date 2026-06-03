@@ -161,16 +161,20 @@ export async function chatRoutes(app: FastifyInstance) {
 
       // Check rate limit for Free users before processing
       if (!isPro) {
-        const { rows: usageRows } = await pool.query<{ message_count: string }>(
-          `SELECT message_count FROM chat_usage WHERE user_id = $1 AND date = CURRENT_DATE`,
-          [userId]
-        )
-        const currentCount = usageRows[0] ? parseInt(usageRows[0].message_count) : 0
-        if (currentCount >= FREE_DAILY_LIMIT) {
-          return reply.status(402).send({
-            error: 'CHAT_LIMIT_REACHED',
-            usage: { count: currentCount, limit: FREE_DAILY_LIMIT },
-          })
+        try {
+          const { rows: usageRows } = await pool.query<{ message_count: string }>(
+            `SELECT message_count FROM chat_usage WHERE user_id = $1 AND date = CURRENT_DATE`,
+            [userId]
+          )
+          const currentCount = usageRows[0] ? parseInt(usageRows[0].message_count) : 0
+          if (currentCount >= FREE_DAILY_LIMIT) {
+            return reply.status(402).send({
+              error: 'CHAT_LIMIT_REACHED',
+              usage: { count: currentCount, limit: FREE_DAILY_LIMIT },
+            })
+          }
+        } catch (usageCheckErr) {
+          app.log.warn({ usageCheckErr }, 'chat_usage check failed — skipping rate limit')
         }
       }
 
@@ -244,17 +248,21 @@ export async function chatRoutes(app: FastifyInstance) {
         return reply.status(503).send({ error: 'CLAUDE_UNAVAILABLE' })
       }
 
-      // Increment usage counter (atomic upsert)
-      const { rows: newUsageRows } = await pool.query<{ message_count: string }>(
-        `INSERT INTO chat_usage (user_id, date, message_count)
-         VALUES ($1, CURRENT_DATE, 1)
-         ON CONFLICT (user_id, date) DO UPDATE
-           SET message_count = chat_usage.message_count + 1
-         RETURNING message_count`,
-        [userId]
-      )
-
-      const newCount = parseInt(newUsageRows[0].message_count)
+      // Increment usage counter (atomic upsert) — non-fatal if table missing
+      let newCount = 1
+      try {
+        const { rows: newUsageRows } = await pool.query<{ message_count: string }>(
+          `INSERT INTO chat_usage (user_id, date, message_count)
+           VALUES ($1, CURRENT_DATE, 1)
+           ON CONFLICT (user_id, date) DO UPDATE
+             SET message_count = chat_usage.message_count + 1
+           RETURNING message_count`,
+          [userId]
+        )
+        newCount = parseInt(newUsageRows[0].message_count)
+      } catch (usageErr) {
+        app.log.warn({ usageErr }, 'chat_usage increment failed — non-fatal')
+      }
 
       return reply.send({
         reply: replyText,

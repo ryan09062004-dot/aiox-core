@@ -23,21 +23,33 @@ export async function sendChatMessage(
   history?: HistoryEntry[]
 ): Promise<ChatResponse> {
   const headers = await getAuthHeaders()
-  const res = await fetch(`${API_URL}/chat`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...headers },
-    body: JSON.stringify({ message, history }),
-  })
 
-  const data = await res.json()
+  const controller = new AbortController()
+  const timeoutId = setTimeout(() => controller.abort(), 35_000)
 
-  if (!res.ok) {
-    const errCode = (data as { error?: string }).error ?? ''
-    if (errCode === 'CLAUDE_OVERLOADED' || errCode === 'CLAUDE_RATE_LIMIT' || errCode === 'CLAUDE_UNAVAILABLE') {
-      throw new Error('CLAUDE_UNAVAILABLE')
+  try {
+    const res = await fetch(`${API_URL}/chat`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...headers },
+      body: JSON.stringify({ message, history }),
+      signal: controller.signal,
+    })
+
+    const data = await res.json()
+
+    if (!res.ok) {
+      const errCode = (data as { error?: string }).error ?? ''
+      if (errCode === 'CLAUDE_OVERLOADED' || errCode === 'CLAUDE_RATE_LIMIT' || errCode === 'CLAUDE_UNAVAILABLE') {
+        throw new Error('CLAUDE_UNAVAILABLE')
+      }
+      throw new Error(errCode || `HTTP ${res.status}`)
     }
-    throw new Error(errCode || `HTTP ${res.status}`)
-  }
 
-  return data as ChatResponse
+    return data as ChatResponse
+  } catch (err) {
+    if ((err as Error).name === 'AbortError') throw new Error('CLAUDE_UNAVAILABLE')
+    throw err
+  } finally {
+    clearTimeout(timeoutId)
+  }
 }
