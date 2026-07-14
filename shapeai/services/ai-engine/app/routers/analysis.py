@@ -1,6 +1,8 @@
 import asyncio
 import logging
 import os
+import time
+from contextlib import contextmanager
 from functools import partial
 
 import httpx
@@ -25,6 +27,29 @@ INTERNAL_SECRET = os.getenv("INTERNAL_SECRET", "")
 class AnalyzeRequest(BaseModel):
     analysis_id: str
     user_id: str
+
+
+@contextmanager
+def _timed(analysis_id: str, step: str, timings: dict):
+    """Cronometra uma etapa do pipeline e registra no log e no dict de timings."""
+    start = time.perf_counter()
+    try:
+        yield
+    finally:
+        elapsed = time.perf_counter() - start
+        timings[step] = round(elapsed, 2)
+        logger.info("[timing] %s | %s: %.2fs", analysis_id, step, elapsed)
+
+
+def _timed_call(analysis_id: str, step: str, timings: dict, fn, *args):
+    """Versão para funções que rodam em executor — mede a função em si."""
+    start = time.perf_counter()
+    try:
+        return fn(*args)
+    finally:
+        elapsed = time.perf_counter() - start
+        timings[step] = round(elapsed, 2)
+        logger.info("[timing] %s | %s: %.2fs", analysis_id, step, elapsed)
 
 
 def _build_scores(body_composition: dict) -> dict:
@@ -63,18 +88,24 @@ async def analyze(request: AnalyzeRequest):
             "weight_kg": float(analysis["weight_kg"]) if analysis.get("weight_kg") is not None else None,
         }
 
+        # Instrumentação: mede cada etapa para saber onde o tempo realmente vai.
+        timings: dict = {}
+        pipeline_start = time.perf_counter()
+
         # 2. Download photos em paralelo
         loop = asyncio.get_event_loop()
-        front_bytes = await loop.run_in_executor(None, download_photo, front_url)
-        back_bytes = (
-            await loop.run_in_executor(None, download_photo, back_url) if back_url else None
-        )
+        with _timed(analysis_id, "download_photos", timings):
+            front_bytes = await loop.run_in_executor(None, download_photo, front_url)
+            back_bytes = (
+                await loop.run_in_executor(None, download_photo, back_url) if back_url else None
+            )
 
         # 3. Claude Vision — análise completa com scores musculares
         logger.info("[ai-engine] Running Claude Vision analysis for %s", analysis_id)
-        body_composition = await loop.run_in_executor(
-            None, analyze_body_vision, front_bytes, back_bytes, profile
-        )
+        with _timed(analysis_id, "vision", timings):
+            body_composition = await loop.run_in_executor(
+                None, analyze_body_vision, front_bytes, back_bytes, profile
+            )
 
         # 4. Build scores dict from vision output
         scores_dict = _build_scores(dict(body_composition))
@@ -82,21 +113,38 @@ async def analyze(request: AnalyzeRequest):
         # 5. LGPD: deletar fotos + gerar relatório, plano e future-self em paralelo
         # Future-self usa front_bytes (já em memória) — deleção do S3 pode ocorrer em paralelo
         bc_dict = dict(body_composition)
-        report, workout_plan, future_self_bytes, _ = await asyncio.gather(
-            loop.run_in_executor(None, partial(generate_report, scores_dict, bc_dict, profile)),
-            loop.run_in_executor(None, partial(generate_workout_plan, scores_dict, bc_dict, profile)),
-            loop.run_in_executor(None, partial(generate_future_self, front_bytes, scores_dict, profile)),
-            loop.run_in_executor(None, delete_all_photos, front_url, back_url),
-        )
+        with _timed(analysis_id, "parallel_block", timings):
+            report, workout_plan, future_self_bytes, _ = await asyncio.gather(
+                loop.run_in_executor(
+                    None,
+                    partial(_timed_call, analysis_id, "report", timings,
+                            generate_report, scores_dict, bc_dict, profile),
+                ),
+                loop.run_in_executor(
+                    None,
+                    partial(_timed_call, analysis_id, "workout_plan", timings,
+                            generate_workout_plan, scores_dict, bc_dict, profile),
+                ),
+                loop.run_in_executor(
+                    None,
+                    partial(_timed_call, analysis_id, "future_self", timings,
+                            generate_future_self, front_bytes, scores_dict, profile),
+                ),
+                loop.run_in_executor(None, delete_all_photos, front_url, back_url),
+            )
         mark_photos_deleted(analysis_id)
 
         # 6. Upload da imagem de evolução (se gerada com sucesso)
         future_self_url = None
         if future_self_bytes:
             try:
-                future_self_url = upload_future_self(analysis_id, future_self_bytes)
+                with _timed(analysis_id, "upload_future_self", timings):
+                    future_self_url = upload_future_self(analysis_id, future_self_bytes)
             except Exception as upload_err:
                 logger.error("[ai-engine] Failed to upload future-self for %s: %s", analysis_id, upload_err)
+
+        timings["TOTAL"] = round(time.perf_counter() - pipeline_start, 2)
+        logger.info("[timing] %s | RESUMO: %s", analysis_id, timings)
 
         # 7. Callback ao API Gateway
         async with httpx.AsyncClient(timeout=30) as http:
