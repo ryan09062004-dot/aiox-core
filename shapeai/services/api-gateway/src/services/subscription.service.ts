@@ -11,8 +11,14 @@ export async function getSubscriptionStatus(pool: Pool, userId: string): Promise
     [userId]
   )
   if (!rows[0]) throw new Error('User not found')
-  return {
-    status: rows[0].subscription_status as 'free' | 'pro',
-    expires_at: rows[0].subscription_expires_at,
-  }
+
+  const expiresAt = rows[0].subscription_expires_at
+  // A coluna só muda quando um webhook chega. Se o de cancelamento/expiração se perder,
+  // o acesso ficaria liberado para sempre — por isso a data manda sobre o status.
+  const isExpired = !!expiresAt && new Date(expiresAt).getTime() <= Date.now()
+  const status = (rows[0].subscription_status === 'pro' && !isExpired ? 'pro' : 'free') as
+    | 'free'
+    | 'pro'
+
+  return { status, expires_at: expiresAt }
 }
