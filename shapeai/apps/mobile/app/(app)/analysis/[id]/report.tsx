@@ -77,13 +77,6 @@ function scoreLabel(score: number) {
   return 'Iniciando a Jornada'
 }
 
-function scoreMotivation(score: number): string {
-  if (score >= 75) return 'Você está no nível dos atletas. Continue assim!'
-  if (score >= 50) return 'Você tem uma boa base. O shape ideal está próximo.'
-  if (score >= 30) return 'Cada treino te aproxima mais. Você está no caminho certo!'
-  return 'Toda grande transformação começa com o primeiro passo. Esse é o seu!'
-}
-
 function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString('pt-BR', {
     day: 'numeric',
@@ -186,7 +179,6 @@ function HeroCard({ score, date }: { score: number; date: string }) {
         <Text style={[s.levelText, { color }]}>{scoreLabel(score)}</Text>
       </View>
       <Text style={s.heroContext}>Baseado em 9 grupos musculares</Text>
-      <Text style={s.heroMotivation}>{scoreMotivation(score)}</Text>
     </View>
   )
 }
@@ -471,8 +463,8 @@ export default function ReportScreen() {
         {/* Aba 1 — Resultado */}
         <ScrollView style={{ width: SCREEN_W }} contentContainerStyle={s.tabContent}>
           <HeroCard score={overallScore} date={analysis.completed_at} />
-          {bc?.overall_assessment ? <AssessmentCard text={bc.overall_assessment} /> : null}
           {bc ? <CompactBodyComp data={bc} /> : null}
+          {bc?.overall_assessment ? <AssessmentCard text={bc.overall_assessment} /> : null}
           {analysis.future_self_url ? (
             <FutureEvolutionCard imageUrl={analysis.future_self_url} />
           ) : null}
@@ -483,9 +475,6 @@ export default function ReportScreen() {
             <Text style={s.workoutButtonText}>Ver Plano de Treino</Text>
             <Text style={s.workoutButtonArrow}>→</Text>
           </TouchableOpacity>
-          <Text style={s.disclaimerText}>
-            Estimativa baseada em análise visual. Consulte um profissional de saúde antes de iniciar qualquer programa de exercícios.
-          </Text>
         </ScrollView>
 
         {/* Aba 2 — Insights */}
@@ -579,7 +568,6 @@ const s = StyleSheet.create({
   levelDot: { width: 6, height: 6, borderRadius: 3 },
   levelText: { fontSize: 13, fontWeight: '600' },
   heroContext: { color: '#333', fontSize: 12, letterSpacing: 0.3 },
-  heroMotivation: { color: '#555', fontSize: 12, textAlign: 'center', lineHeight: 18, paddingHorizontal: 12 },
 
   // Assessment
   assessmentCard: {
@@ -709,12 +697,6 @@ const s = StyleSheet.create({
   workoutButtonText: { color: '#4CAF50', fontSize: 16, fontWeight: '700' },
   workoutButtonArrow: { color: '#4CAF50', fontSize: 18 },
 
-  disclaimerText: {
-    color: '#2A2A2A',
-    fontSize: 11,
-    lineHeight: 17,
-    textAlign: 'center',
-  },
 })
 
 const barStyles = StyleSheet.create({
