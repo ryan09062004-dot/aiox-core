@@ -4,13 +4,14 @@ import { router } from 'expo-router'
 import { Ionicons } from '@expo/vector-icons'
 import { useAuthStore } from '../../src/stores/auth.store'
 import { useOnboardingStore } from '../../src/stores/onboarding.store'
-import { createUserProfile } from '../../src/services/profile.service'
+import { createUserProfile, updateUserProfile } from '../../src/services/profile.service'
 import {
   startAnalysis,
   uploadPhoto,
   triggerProcessing,
   pollAnalysis,
 } from '../../src/services/analysis.service'
+import { claimPhotos } from '../../src/services/photo-vault'
 
 // Cada etapa é um passo real do pipeline. O tempo é estimado, mas a barra só chega
 // ao fim quando o backend confirma — nada aqui é puramente decorativo.
@@ -57,26 +58,42 @@ export default function GeneratingScreen() {
 
     const run = async () => {
       const { sex, goal, height_cm, weight_kg } = answers
-      if (!sex || !goal || !height_cm || !weight_kg || !frontPhotoUri) {
+
+      // Quem entrou com Google saiu do app durante o OAuth e perdeu as fotos da memória.
+      // Elas ficaram no cofre (IndexedDB) — recupera aqui. claimPhotos apaga na leitura.
+      let front = frontPhotoUri
+      let back = backPhotoUri
+      if (!front) {
+        const vaulted = await claimPhotos()
+        if (vaulted) {
+          front = vaulted.front
+          back = vaulted.back
+        }
+      }
+
+      if (!sex || !goal || !height_cm || !weight_kg || !front) {
         setError('Perdemos seus dados. Refaça o questionário — leva menos de um minuto.')
         return
       }
 
       try {
-        await createUserProfile({
+        // Quem entra com Google pode já ter conta e perfil — nesse caso o POST falha e
+        // as respostas do quiz entram como atualização.
+        const profileData = {
           biological_sex: sex,
           primary_goal: goal,
           height_cm,
           weight_kg,
-        })
+        }
+        await createUserProfile(profileData).catch(() => updateUserProfile(profileData))
 
         const { analysis_id, upload_urls } = await startAnalysis()
 
-        const uploads = [uploadPhoto(upload_urls.front, frontPhotoUri)]
-        if (backPhotoUri) uploads.push(uploadPhoto(upload_urls.back, backPhotoUri))
+        const uploads = [uploadPhoto(upload_urls.front, front)]
+        if (back) uploads.push(uploadPhoto(upload_urls.back, back))
         await Promise.all(uploads)
 
-        await triggerProcessing(analysis_id, { has_back: !!backPhotoUri })
+        await triggerProcessing(analysis_id, { has_back: !!back })
 
         // Espera a análise ficar pronta AQUI e vai direto ao relatório. Antes esta tela
         // redirecionava logo após o 202, e quem esperava de fato era a tela analysis/[id]

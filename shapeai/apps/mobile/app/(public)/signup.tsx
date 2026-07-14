@@ -14,6 +14,8 @@ import { router } from 'expo-router'
 import { Ionicons } from '@expo/vector-icons'
 import { useAuthStore } from '../../src/stores/auth.store'
 import { useOnboardingStore } from '../../src/stores/onboarding.store'
+import { supabase } from '../../src/services/supabase.client'
+import { stashPhotos } from '../../src/services/photo-vault'
 
 const READY_ITEMS = [
   'Sua análise corporal completa',
@@ -69,6 +71,34 @@ export default function FunnelSignupScreen() {
       return
     }
     router.replace('/(public)/generating')
+  }
+
+  // O OAuth do Google sai do app (redirect de página inteira). As fotos vivem só em
+  // memória, então precisam ser guardadas antes — senão a pessoa volta do Google e
+  // descobre que perdeu tudo, justamente no ponto mais caro do funil.
+  const handleGoogle = async () => {
+    const { frontPhotoUri, backPhotoUri } = useOnboardingStore.getState()
+    if (!frontPhotoUri) {
+      setError('Sua foto se perdeu. Tire novamente.')
+      return
+    }
+
+    setSubmitting(true)
+    setError(null)
+    try {
+      await stashPhotos(frontPhotoUri, backPhotoUri)
+
+      const redirectTo = `${window.location.origin}/auth-callback?funnel=1`
+      const { error: oauthError } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: { redirectTo },
+      })
+      if (oauthError) throw oauthError
+      // O navegador redireciona daqui — auth-callback devolve para /generating.
+    } catch {
+      setError('Não foi possível entrar com Google. Tente com e-mail e senha.')
+      setSubmitting(false)
+    }
   }
 
   return (
@@ -133,6 +163,21 @@ export default function FunnelSignupScreen() {
           )}
         </TouchableOpacity>
 
+        <View style={styles.dividerRow}>
+          <View style={styles.dividerLine} />
+          <Text style={styles.dividerText}>ou</Text>
+          <View style={styles.dividerLine} />
+        </View>
+
+        <TouchableOpacity
+          style={[styles.googleButton, submitting && styles.buttonDisabled]}
+          disabled={submitting}
+          onPress={handleGoogle}
+        >
+          <Ionicons name="logo-google" size={18} color="#fff" />
+          <Text style={styles.googleButtonText}>Continuar com Google</Text>
+        </TouchableOpacity>
+
         <TouchableOpacity style={styles.linkRow} onPress={() => router.push('/(auth)/login')}>
           <Text style={styles.linkText}>Já tenho conta</Text>
         </TouchableOpacity>
@@ -191,6 +236,22 @@ const styles = StyleSheet.create({
   },
   buttonDisabled: { opacity: 0.6 },
   buttonText: { color: '#fff', fontSize: 16, fontWeight: '600' },
+
+  dividerRow: { flexDirection: 'row', alignItems: 'center', gap: 12, marginVertical: 4 },
+  dividerLine: { flex: 1, height: 1, backgroundColor: '#1F1F1F' },
+  dividerText: { color: '#555', fontSize: 12 },
+  googleButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: '#1A1A1A',
+    borderWidth: 1,
+    borderColor: '#2A2A2A',
+    borderRadius: 14,
+    padding: 16,
+  },
+  googleButtonText: { color: '#fff', fontSize: 15, fontWeight: '600' },
 
   linkRow: { alignItems: 'center', padding: 12 },
   linkText: { color: '#888', fontSize: 14 },

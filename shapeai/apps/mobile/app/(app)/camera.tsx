@@ -4,9 +4,10 @@ import {
   Text,
   StyleSheet,
   TouchableOpacity,
-  Alert,
   Image,
   ActivityIndicator,
+  Modal,
+  Pressable,
 } from 'react-native'
 import { CameraView, CameraType, useCameraPermissions } from 'expo-camera'
 import * as FileSystem from 'expo-file-system'
@@ -43,6 +44,8 @@ export default function CameraScreen() {
   const [frontPhotoUri, setFrontPhotoUri] = useState<string | null>(null)
   const [previewUri, setPreviewUri] = useState<string | null>(null)
   const [isUploading, setIsUploading] = useState(false)
+  const [confirmSkip, setConfirmSkip] = useState(false)
+  const [errorMsg, setErrorMsg] = useState<string | null>(null)
   const cameraRef = useRef<CameraView>(null)
 
   // Reset completo toda vez que a tela recebe foco — o Tabs navigator
@@ -54,6 +57,8 @@ export default function CameraScreen() {
       setFrontPhotoUri(null)
       setPreviewUri(null)
       setIsUploading(false)
+      setConfirmSkip(false)
+      setErrorMsg(null)
     }, [])
   )
 
@@ -78,7 +83,7 @@ export default function CameraScreen() {
       const info = await FileSystem.getInfoAsync(uri, { size: true } as any)
       const fileSize = info.exists && 'size' in info ? (info.size as number) : null
       if (fileSize && fileSize > MAX_FILE_SIZE_BYTES) {
-        Alert.alert('Foto muito grande', 'Cada foto deve ter no máximo 10 MB. Tente novamente.')
+        setErrorMsg('Foto muito grande. Cada foto deve ter no máximo 10 MB.')
         return false
       }
     } catch {
@@ -114,11 +119,30 @@ export default function CameraScreen() {
     setScreenState('camera')
   }
 
-  const handleRetakeFront = () => {
-    setFrontPhotoUri(null)
-    setStep('front')
-    setPreviewUri(null)
-    setScreenState('camera')
+
+  const submit = async (frontUri: string, backUri: string | null) => {
+    setIsUploading(true)
+    try {
+      const { analysis_id, upload_urls } = await startAnalysis()
+
+      const uploads = [uploadPhoto(upload_urls.front, frontUri)]
+      if (backUri) uploads.push(uploadPhoto(upload_urls.back, backUri))
+      await Promise.all(uploads)
+
+      await triggerProcessing(analysis_id, { has_back: !!backUri })
+      router.push(`/(app)/analysis/${analysis_id}`)
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Erro desconhecido'
+      setIsUploading(false)
+
+      // O backend recusa a segunda análise de quem é free — leva ao paywall em vez
+      // de mostrar um erro que a pessoa não entenderia.
+      if (msg.includes('SUBSCRIPTION_REQUIRED')) {
+        router.push('/(app)/paywall')
+        return
+      }
+      setErrorMsg(`Falha ao processar: ${msg}`)
+    }
   }
 
   const handleConfirm = async () => {
@@ -132,36 +156,20 @@ export default function CameraScreen() {
       return
     }
 
-    // Gate para convidados — bloqueia o upload e promove cadastro
     if (isGuest) {
-      Alert.alert(
-        'Crie sua conta gratuita',
-        'Para salvar sua análise e ver os resultados, você precisa de uma conta.',
-        [
-          { text: 'Agora não', style: 'cancel' },
-          { text: 'Criar conta', onPress: () => router.push('/(auth)/signup') },
-        ]
-      )
+      router.push('/(auth)/signup')
       return
     }
 
-    // Ambas confirmadas — iniciar upload
     if (!frontPhotoUri) return
-    const backUri = previewUri
-    setIsUploading(true)
-    try {
-      const { analysis_id, upload_urls } = await startAnalysis()
-      await Promise.all([
-        uploadPhoto(upload_urls.front, frontPhotoUri),
-        uploadPhoto(upload_urls.back, backUri),
-      ])
-      await triggerProcessing(analysis_id)
-      router.push(`/(app)/analysis/${analysis_id}`)
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Erro desconhecido'
-      Alert.alert('Erro', `Falha ao processar: ${msg}`)
-      setIsUploading(false)
-    }
+    await submit(frontPhotoUri, previewUri)
+  }
+
+  // A foto de costas é opcional aqui também — sem ela, dorsais, trapézio e glúteos
+  // ficam estimados em vez de avaliados.
+  const handleSkipBack = () => {
+    if (!frontPhotoUri) return
+    setConfirmSkip(true)
   }
 
   if (isUploading) {
@@ -200,30 +208,59 @@ export default function CameraScreen() {
 
   return (
     <View style={styles.container}>
+      <Modal
+        visible={confirmSkip}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setConfirmSkip(false)}
+      >
+        <Pressable style={styles.modalOverlay} onPress={() => setConfirmSkip(false)}>
+          <Pressable style={styles.modalCard} onPress={(e) => e.stopPropagation()}>
+            <Text style={styles.modalTitle}>Pular a foto de costas?</Text>
+            <Text style={styles.modalText}>
+              Sua análise fica pronta do mesmo jeito, mas dorsais, trapézio e glúteos ficam
+              estimados em vez de avaliados.
+            </Text>
+            <TouchableOpacity style={styles.modalPrimary} onPress={() => setConfirmSkip(false)}>
+              <Text style={styles.modalPrimaryText}>Vou tirar</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.modalSecondary}
+              onPress={() => {
+                setConfirmSkip(false)
+                if (frontPhotoUri) submit(frontPhotoUri, null)
+              }}
+            >
+              <Text style={styles.modalSecondaryText}>Pular mesmo assim</Text>
+            </TouchableOpacity>
+          </Pressable>
+        </Pressable>
+      </Modal>
+
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
           <Ionicons name="chevron-back" size={22} color="#fff" />
         </TouchableOpacity>
         <View style={styles.stepInfo}>
-          <Text style={styles.stepText}>Foto {config.number} de 2 — {config.label}</Text>
+          <Text style={styles.stepText}>
+            {step === 'back' ? 'Foto 2 de 2 — Costas (opcional)' : 'Foto 1 de 2 — Frente'}
+          </Text>
           <View style={styles.stepDots}>
             <View style={[styles.dot, step === 'front' ? styles.dotActive : styles.dotDone]} />
             <View style={[styles.dot, step === 'back' && styles.dotActive]} />
           </View>
         </View>
-        {/* Botão refazer frente quando está no passo de costas */}
         {step === 'back' && frontPhotoUri ? (
-          <TouchableOpacity style={styles.retakeFrontButton} onPress={handleRetakeFront}>
-            <Image source={{ uri: frontPhotoUri }} style={styles.retakeFrontThumb} />
-            <View style={styles.retakeFrontOverlay}>
-              <Ionicons name="refresh-outline" size={12} color="#fff" />
-            </View>
+          <TouchableOpacity onPress={handleSkipBack}>
+            <Text style={styles.skipText}>Pular</Text>
           </TouchableOpacity>
         ) : (
           <View style={{ width: 38 }} />
         )}
       </View>
+
+      {errorMsg && <Text style={styles.errorBanner}>{errorMsg}</Text>}
 
       {/* Câmera — sempre traseira */}
       <CameraView ref={cameraRef} style={styles.camera} facing={'back' as CameraType}>
@@ -287,16 +324,41 @@ const styles = StyleSheet.create({
   dotActive: { backgroundColor: '#4CAF50' },
   dotDone: { backgroundColor: '#2E7D32' },
 
-  retakeFrontButton: {
-    width: 38, height: 38, borderRadius: 8,
-    overflow: 'hidden', borderWidth: 1.5, borderColor: '#4CAF50',
+  skipText: { color: '#888', fontSize: 14, fontWeight: '600', width: 44, textAlign: 'right' },
+  errorBanner: {
+    color: '#E57373',
+    fontSize: 13,
+    textAlign: 'center',
+    paddingHorizontal: 20,
+    paddingBottom: 8,
+    backgroundColor: '#000',
   },
-  retakeFrontThumb: { width: '100%', height: '100%' },
-  retakeFrontOverlay: {
-    position: 'absolute', bottom: 0, left: 0, right: 0,
-    backgroundColor: 'rgba(0,0,0,0.6)',
-    alignItems: 'center', paddingVertical: 2,
+
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.75)',
+    justifyContent: 'center',
+    padding: 28,
   },
+  modalCard: {
+    backgroundColor: '#151515',
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: '#242424',
+    padding: 22,
+    gap: 10,
+  },
+  modalTitle: { color: '#fff', fontSize: 18, fontWeight: '700' },
+  modalText: { color: '#999', fontSize: 14, lineHeight: 20, marginBottom: 6 },
+  modalPrimary: {
+    backgroundColor: '#4CAF50',
+    borderRadius: 12,
+    padding: 15,
+    alignItems: 'center',
+  },
+  modalPrimaryText: { color: '#fff', fontSize: 15, fontWeight: '700' },
+  modalSecondary: { padding: 12, alignItems: 'center' },
+  modalSecondaryText: { color: '#888', fontSize: 14 },
 
   camera: { flex: 1 },
   instruction: {

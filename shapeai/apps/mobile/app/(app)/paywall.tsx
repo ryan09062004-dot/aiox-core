@@ -8,6 +8,7 @@ import {
   ActivityIndicator,
   Linking,
   TextInput,
+  Platform,
 } from 'react-native'
 import { router } from 'expo-router'
 import { Ionicons } from '@expo/vector-icons'
@@ -17,9 +18,9 @@ import { useSubscription } from '../../src/hooks/useSubscription'
 const PLAN: PlanId = 'monthly'
 
 const BENEFITS = [
+  'Raio-X corporal detalhado por grupo muscular',
   'Plano de treino completo, semana a semana',
   'Plano alimentar com macros e cardápio',
-  'Raio-X corporal detalhado por grupo muscular',
   'Novas análises para acompanhar sua evolução',
   'Personal AI para tirar dúvidas quando quiser',
 ]
@@ -39,6 +40,14 @@ export default function PaywallScreen() {
     setMessage(null)
     try {
       const url = await createCheckout(PLAN)
+
+      // Na web, Linking.openURL vira window.open — e como aqui já passamos por um await,
+      // o navegador não considera mais isso um clique do usuário e bloqueia o popup.
+      // Navegar na própria aba não sofre esse bloqueio.
+      if (Platform.OS === 'web') {
+        window.location.assign(url)
+        return
+      }
       await Linking.openURL(url)
     } catch (e: unknown) {
       setMessage({

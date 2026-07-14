@@ -7,7 +7,7 @@ import { supabase } from '../src/services/supabase.client'
 export default function AuthCallback() {
   const [status, setStatus] = useState('...')
   // expo-router passa o ?code= como search param
-  const params = useLocalSearchParams<{ code?: string }>()
+  const params = useLocalSearchParams<{ code?: string; funnel?: string }>()
   // expo-linking rastreia a URL que abriu/retomou o app
   const url = Linking.useURL()
 
@@ -45,7 +45,10 @@ export default function AuthCallback() {
 
       const { data } = await supabase.auth.getSession()
       if (data.session) {
-        router.replace('/(app)')
+        // Quem veio do funil (?funnel=1) volta para a geração da análise, não para a
+        // home — as fotos ficaram guardadas no cofre antes do redirect do Google.
+        const fromFunnel = params.funnel === '1' || (url?.includes('funnel=1') ?? false)
+        router.replace(fromFunnel ? '/(public)/generating' : '/(app)')
       } else {
         setStatus('sem sessao — verifique Supabase Redirect URLs')
         setTimeout(() => router.replace('/(auth)/login'), 4000)
@@ -53,7 +56,7 @@ export default function AuthCallback() {
     }
 
     exchange()
-  }, [params.code, url])
+  }, [params.code, params.funnel, url])
 
   return (
     <View style={{ flex: 1, backgroundColor: '#0A0A0A', justifyContent: 'center', alignItems: 'center', padding: 24 }}>
