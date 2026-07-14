@@ -19,7 +19,7 @@ const PLAN: PlanId = 'monthly'
 const BENEFITS = [
   'Plano de treino completo, semana a semana',
   'Plano alimentar com macros e cardápio',
-  'Análise corporal detalhada por grupo muscular',
+  'Raio-X corporal detalhado por grupo muscular',
   'Novas análises para acompanhar sua evolução',
   'Personal AI para tirar dúvidas quando quiser',
 ]

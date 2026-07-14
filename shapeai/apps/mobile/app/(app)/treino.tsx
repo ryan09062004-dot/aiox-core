@@ -157,10 +157,10 @@ export default function TreinoTab() {
   const currentWeek = weeks[selectedWeek]
   const displaySessions = applyWorkoutMode(currentWeek?.sessions ?? [], workoutMode)
 
-  // Semanas 2+ são fechadas. Na semana 1, o usuário free vê apenas os três primeiros
-  // treinos (segunda, terça e quarta) — o suficiente para provar que o plano é real.
+  // Semanas 2+ são fechadas. Na semana 1, o usuário free vê apenas os dois primeiros
+  // treinos (segunda e terça) — o suficiente para provar que o plano é real.
   const isWeekLocked = (index: number) => !isPro && index > 0
-  const FREE_SESSIONS_IN_WEEK_1 = 3
+  const FREE_SESSIONS_IN_WEEK_1 = 2
   const freeSessionCount =
     isPro || selectedWeek > 0 ? displaySessions.length : FREE_SESSIONS_IN_WEEK_1
   const lockedSessions = displaySessions.slice(freeSessionCount)
@@ -202,7 +202,7 @@ export default function TreinoTab() {
       {/* O header rola junto com o conteúdo — fica dentro do ScrollView, não fixo no topo. */}
       <ScrollView style={styles.daysScroll} contentContainerStyle={styles.daysContent}>
       <View style={[styles.headerCard, { paddingTop: insets.top + 16 }]}>
-        {SHOW_ANALYSIS_PICKER && completedAnalyses.length > 1 && (
+        {SHOW_ANALYSIS_PICKER && completedAnalyses.length > 0 && (
           <View style={styles.pickerRow}>
             <TouchableOpacity style={styles.pickerTrigger} onPress={() => setShowPicker(true)}>
               <Text style={styles.pickerTriggerText}>
@@ -320,7 +320,7 @@ export default function TreinoTab() {
               {lockedSessions.length > 0 && (
                 <LockedSection
                   title={`Mais ${lockedSessions.length} treinos nesta semana`}
-                  description="Você tem os três primeiros dias. O restante da semana e as semanas seguintes vêm no plano completo."
+                  description="Você tem os dois primeiros dias. O restante da semana e as semanas seguintes vêm no plano completo."
                   cta="Desbloquear meu plano"
                 >
                   {lockedSessions.slice(0, 2).map((session, i) => (

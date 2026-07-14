@@ -5,7 +5,12 @@ import { Ionicons } from '@expo/vector-icons'
 import { useAuthStore } from '../../src/stores/auth.store'
 import { useOnboardingStore } from '../../src/stores/onboarding.store'
 import { createUserProfile } from '../../src/services/profile.service'
-import { startAnalysis, uploadPhoto, triggerProcessing } from '../../src/services/analysis.service'
+import {
+  startAnalysis,
+  uploadPhoto,
+  triggerProcessing,
+  pollAnalysis,
+} from '../../src/services/analysis.service'
 
 // Cada etapa é um passo real do pipeline. O tempo é estimado, mas a barra só chega
 // ao fim quando o backend confirma — nada aqui é puramente decorativo.
@@ -18,7 +23,9 @@ const STAGES = [
   'Gerando sua projeção de resultado…',
 ]
 
-const STAGE_MS = 4000
+// 6 etapas × 6s = 36s, calibrado pelo tempo real medido do pipeline. A barra chega ao
+// fim junto com a análise ficando pronta, em vez de travar no 100% esperando.
+const STAGE_MS = 6000
 
 export default function GeneratingScreen() {
   const session = useAuthStore((s) => s.session)
@@ -71,8 +78,17 @@ export default function GeneratingScreen() {
 
         await triggerProcessing(analysis_id, { has_back: !!backPhotoUri })
 
+        // Espera a análise ficar pronta AQUI e vai direto ao relatório. Antes esta tela
+        // redirecionava logo após o 202, e quem esperava de fato era a tela analysis/[id]
+        // — a pessoa via duas telas de carregamento em sequência.
+        const result = await pollAnalysis(analysis_id)
+        if (result.status === 'failed') {
+          setError('Não conseguimos ler sua foto. Tente de novo com boa luz e o corpo inteiro visível.')
+          return
+        }
+
         clear()
-        router.replace(`/(app)/analysis/${analysis_id}`)
+        router.replace(`/(app)/analysis/${analysis_id}/report`)
       } catch (e: unknown) {
         setError(e instanceof Error ? e.message : 'Falha ao gerar sua análise.')
       }

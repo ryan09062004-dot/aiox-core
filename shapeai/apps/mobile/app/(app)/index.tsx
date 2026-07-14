@@ -3,8 +3,6 @@ import {
   View, Text, StyleSheet, TouchableOpacity,
   ActivityIndicator, Image, ScrollView, TextInput, Share, Animated, Easing,
 } from 'react-native'
-import { BlurView } from 'expo-blur'
-import MaskedView from '@react-native-masked-view/masked-view'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { LinearGradient } from 'expo-linear-gradient'
 import * as ImagePicker from 'expo-image-picker'
@@ -17,7 +15,10 @@ import { useAuthStore } from '../../src/stores/auth.store'
 import { PHOTO_TIP_STORAGE_KEY } from './photo-tip'
 import { WorkoutShareCard } from '../../src/components/workout/WorkoutShareCard'
 import { getUserProfile } from '../../src/services/profile.service'
+import { BlurView } from 'expo-blur'
+import MaskedView from '@react-native-masked-view/masked-view'
 import { listAnalyses, getAnalysisResult } from '../../src/services/analysis.service'
+import { useSubscription } from '../../src/hooks/useSubscription'
 import { GOAL_LABEL, getScoreColor } from '@shapeai/shared'
 import type { AnalysisSummary, WorkoutSession, PrimaryGoal } from '@shapeai/shared'
 
@@ -145,10 +146,13 @@ function Ring({ pct, size = 56 }: { pct: number; size?: number }) {
 
 export default function HomeScreen() {
   const insets = useSafeAreaInsets()
+  const { isPro } = useSubscription()
+  const [headerHeight, setHeaderHeight] = useState(0)
   const { session, isGuest } = useAuthStore()
   const [goal, setGoal] = useState<PrimaryGoal | null>(null)
   const [weight, setWeight] = useState<number | null>(null)
   const [lastAnalysis, setLastAnalysis] = useState<AnalysisSummary | null | undefined>(undefined)
+  const [futureSelfUrl, setFutureSelfUrl] = useState<string | null>(null)
   const [todayWorkout, setTodayWorkout] = useState<TodayWorkout | null>(null)
   const [planPct, setPlanPct] = useState(0)
   const [avatarUri, setAvatarUri] = useState<string | null>(null)
@@ -157,7 +161,6 @@ export default function HomeScreen() {
   const [nameInput, setNameInput] = useState('')
   const [shareVisible, setShareVisible] = useState(false)
   const [planTotalWeeks, setPlanTotalWeeks] = useState(4)
-  const [headerHeight, setHeaderHeight] = useState(0)
   const sweepAnim = useRef(new Animated.Value(-160)).current
 
   useEffect(() => {
@@ -241,6 +244,7 @@ export default function HomeScreen() {
       if (!last) return
 
       const result = await getAnalysisResult(last.id)
+      setFutureSelfUrl(result.future_self_url ?? null)
       const weeks = result.workout_plan.weeks as any[]
       setPlanTotalWeeks(weeks.length)
       const raw = await AsyncStorage.getItem(storageKey(last.id))
@@ -299,20 +303,33 @@ export default function HomeScreen() {
         showsVerticalScrollIndicator={false}
       >
 
-      {/* ── Hero: imagem + fade + texto sobreposto ── */}
-      <View style={styles.heroWrapper}>
-        <Image
-          source={require('../../assets/hero-image.png')}
-          style={styles.heroImage}
-          resizeMode="cover"
-        />
-        {/* Fade base: funde com o conteúdo abaixo + texto sobreposto */}
-        <LinearGradient
-          colors={['transparent', 'rgba(10,10,10,0.75)', '#0A0A0A']}
-          style={styles.heroFadeBottom}
-          pointerEvents="none"
-        />
-        <View style={styles.heroTextBlock}>
+      {/* ── Hero ── */}
+      {/* Com análise feita, o fundo é a imagem de evolução DA PESSOA: "veja sua evolução"
+          deixa de ser promessa e vira literal. Sem análise, não há imagem dela — e uma
+          foto de banco só enfraqueceria a promessa, então o hero fica tipográfico. */}
+      {futureSelfUrl ? (
+        <View style={styles.heroImageWrapper}>
+          <Image
+            source={{ uri: futureSelfUrl }}
+            style={styles.heroImage}
+            resizeMode="cover"
+          />
+          <LinearGradient
+            colors={['transparent', 'rgba(10,10,10,0.8)', '#0A0A0A']}
+            style={styles.heroFadeBottom}
+            pointerEvents="none"
+          />
+          <View style={styles.heroTextBlock}>
+            <Text style={styles.heroTitle}>
+              Sua <Text style={styles.heroHighlight}>evolução</Text>{'\n'}já começou.
+            </Text>
+            <Text style={styles.heroSub}>
+              Esta é a sua projeção. Siga o plano e ela vira realidade.
+            </Text>
+          </View>
+        </View>
+      ) : (
+        <View style={styles.heroWrapper}>
           <Text style={styles.heroTitle}>
             Veja sua <Text style={styles.heroHighlight}>evolução</Text>{'\n'}antes de começar.
           </Text>
@@ -320,7 +337,7 @@ export default function HomeScreen() {
             Avalie seu shape e evolua com um plano feito para você.
           </Text>
         </View>
-      </View>
+      )}
 
       {/* ── Avaliação de Shape ── */}
       <View style={styles.evalCard}>
@@ -529,7 +546,10 @@ export default function HomeScreen() {
             </View>
           </View>
           <View style={styles.headerRight}>
-            <LinearGradient
+            {/* O selo só aparece para quem realmente assina — antes era fixo no JSX e
+                todo usuário via "PRO" ao lado do próprio nome. */}
+            {isPro && (
+              <LinearGradient
                 colors={['#00FF85', '#FFE500']}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 0 }}
@@ -543,6 +563,7 @@ export default function HomeScreen() {
                   </MaskedView>
                 </View>
               </LinearGradient>
+            )}
             <TouchableOpacity onPress={() => router.push('/(app)/profile')} activeOpacity={0.7} style={styles.gearBtn}>
               <Ionicons name="settings-outline" size={22} color="#555" />
             </TouchableOpacity>
@@ -582,7 +603,6 @@ const styles = StyleSheet.create({
   },
   avatarImage: { width: 52, height: 52, borderRadius: 26 },
   avatarText: { color: '#4CAF50', fontSize: 20, fontWeight: '800' },
-  greetingTime: { color: '#777', fontSize: 13, fontWeight: '500', marginBottom: 1 },
   greeting: { color: '#fff', fontSize: 17, fontWeight: '700' },
   nameInput: {
     color: '#fff', fontSize: 17, fontWeight: '700',
@@ -602,37 +622,33 @@ const styles = StyleSheet.create({
 
   // Hero
   heroWrapper: {
+    paddingTop: 28,
+    paddingBottom: 24,
+  },
+  heroImageWrapper: {
     width: '120%',
-    height: 320,
-    borderRadius: 0,
+    height: 380,
     overflow: 'hidden',
     marginHorizontal: -20,
+    marginBottom: 4,
   },
   heroImage: {
     ...StyleSheet.absoluteFillObject,
     width: '100%',
     height: '100%',
   },
-  heroFadeTop: {
-    position: 'absolute',
-    top: 0, left: 0, right: 0,
-    height: '45%',
-  },
   heroFadeBottom: {
     position: 'absolute',
     bottom: 0, left: 0, right: 0,
-    height: '60%',
-    justifyContent: 'flex-end',
-    paddingHorizontal: 20,
-    paddingBottom: 20,
+    height: '65%',
   },
   heroTextBlock: {
     position: 'absolute',
     bottom: 20, left: 20, right: 20,
   },
-  heroTitle: { color: '#fff', fontSize: 28, fontWeight: '800', lineHeight: 36, marginBottom: 6 },
+  heroTitle: { color: '#fff', fontSize: 32, fontWeight: '800', lineHeight: 40, marginBottom: 10 },
   heroHighlight: { color: '#4CAF50' },
-  heroSub: { color: 'rgba(255,255,255,0.5)', fontSize: 14, lineHeight: 20 },
+  heroSub: { color: '#888', fontSize: 15, lineHeight: 22, maxWidth: 320 },
 
   // Eval card
   evalCard: {

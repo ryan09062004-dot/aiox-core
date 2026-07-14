@@ -14,7 +14,6 @@ interface Props {
   total: number
   prevScore?: number | null
   onPress?: () => void
-  onWorkout?: () => void
 }
 
 const MUSCLE_PT: Record<string, string> = {
@@ -113,7 +112,7 @@ function ScoreRing({ score, color }: { score: number; color: string }) {
   )
 }
 
-export function AnalysisHistoryItem({ item, isLatest, index, total, prevScore, onPress, onWorkout }: Props) {
+export function AnalysisHistoryItem({ item, isLatest, index, total, prevScore, onPress }: Props) {
   const evalNumber = index + 1
   const score = item.scores ? calculateOverallScore(item.scores) : null
   const bodyFat = item.scores?.body_fat_estimate_pct ?? null
@@ -131,8 +130,13 @@ export function AnalysisHistoryItem({ item, isLatest, index, total, prevScore, o
       >
         <View style={styles.featuredHeader}>
           <Text style={styles.featuredDate}>{formatDate(item.created_at)}</Text>
-          <View style={styles.featuredBadge}>
-            <Text style={styles.featuredBadgeLabel}>Mais recente</Text>
+          <View style={styles.featuredHeaderRight}>
+            <View style={styles.featuredBadge}>
+              <Text style={styles.featuredBadgeLabel}>Mais recente</Text>
+            </View>
+            {/* O card inteiro abre o relatório. A seta é a pista de que ele é tocável —
+                antes esse papel era do botão "Ver mais detalhes", que levava ao mesmo lugar. */}
+            {onPress && <Ionicons name="chevron-forward" size={18} color="#666" />}
           </View>
         </View>
 
@@ -165,15 +169,6 @@ export function AnalysisHistoryItem({ item, isLatest, index, total, prevScore, o
           </View>
         </View>
 
-        {onWorkout && (
-          <TouchableOpacity
-            style={styles.workoutButton}
-            onPress={onWorkout}
-            activeOpacity={0.8}
-          >
-            <Text style={styles.workoutButtonText}>Ver mais detalhes</Text>
-          </TouchableOpacity>
-        )}
       </TouchableOpacity>
     )
   }
@@ -266,6 +261,7 @@ const styles = StyleSheet.create({
     marginBottom: 28,
   },
   featuredDate: { fontSize: 13, color: '#666', fontWeight: '500' },
+  featuredHeaderRight: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   featuredBadge: { flexDirection: 'row', alignItems: 'baseline' },
   featuredBadgeLabel: { fontSize: 14, color: '#4CAF50', fontWeight: '600' },
   featuredBody: {
@@ -283,15 +279,6 @@ const styles = StyleSheet.create({
   ringScore: { fontSize: 28, fontWeight: '800' },
   ringLabel: { fontSize: 11, color: '#555', marginTop: 2 },
 
-  // Botão treino
-  workoutButton: {
-    borderWidth: 1,
-    borderColor: '#4CAF50',
-    borderRadius: 12,
-    paddingVertical: 12,
-    alignItems: 'center',
-  },
-  workoutButtonText: { fontSize: 14, fontWeight: '600', color: '#4CAF50' },
 
   // Card compacto
   compactCard: {

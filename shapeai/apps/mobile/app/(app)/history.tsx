@@ -78,6 +78,7 @@ export default function HistoryScreen() {
   const scoreByIndex = visibleAnalyses.map((a) =>
     a.scores ? calculateOverallScore(a.scores) : null
   )
+  const isSingle = visibleAnalyses.length === 1
 
   if (isLoading) {
     return (
@@ -105,10 +106,14 @@ export default function HistoryScreen() {
       <View style={[styles.header, { paddingTop: insets.top + 16 }]}>
         <Text style={styles.title}>Avaliações</Text>
         <View style={styles.headerActions}>
-          <TouchableOpacity style={styles.newButton} onPress={() => router.push('/(app)/camera')}>
-            <Ionicons name="add" size={16} color="#555" />
-            <Text style={styles.newButtonText}>Criar nova</Text>
-          </TouchableOpacity>
+          {/* Com uma única avaliação o "Criar nova" vira um CTA grande no rodapé —
+              ali ele tem peso, em vez de ficar espremido no canto de uma tela vazia. */}
+          {!isSingle && (
+            <TouchableOpacity style={styles.newButton} onPress={() => router.push('/(app)/camera')}>
+              <Ionicons name="add" size={16} color="#555" />
+              <Text style={styles.newButtonText}>Criar nova</Text>
+            </TouchableOpacity>
+          )}
           <TouchableOpacity style={styles.sortButton} onPress={() => setShowSortMenu(true)}>
             <Ionicons name="filter" size={18} color="#888" />
           </TouchableOpacity>
@@ -159,11 +164,6 @@ export default function HistoryScreen() {
                     ? () => router.push(`/(app)/analysis/${item.id}/report` as never)
                     : undefined
                 }
-                onWorkout={
-                  item.status === 'completed'
-                    ? () => router.push(`/(app)/analysis/${item.id}/report` as never)
-                    : undefined
-                }
               />
             </>
           )
@@ -178,6 +178,36 @@ export default function HistoryScreen() {
           isLoadingMore ? (
             <View style={styles.loadingMore} testID="loading-more-indicator">
               <ActivityIndicator color="#4CAF50" size="small" />
+            </View>
+          ) : isSingle ? (
+            <View style={styles.singleFooter}>
+              <TouchableOpacity
+                style={styles.newBigButton}
+                onPress={() => router.push('/(app)/camera')}
+              >
+                <Ionicons name="add" size={18} color="#0A0A0A" />
+                <Text style={styles.newBigButtonText}>Criar nova avaliação</Text>
+              </TouchableOpacity>
+
+              {/* Com uma só avaliação não há o que comparar. Em vez de deixar o espaço
+                  vazio, explicamos o que a segunda avaliação destrava. */}
+              <View style={styles.evolutionCard}>
+                <View style={styles.evolutionIcon}>
+                  <Ionicons name="trending-up" size={18} color="#4CAF50" />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.evolutionTitle}>Sua evolução aparece aqui</Text>
+                  <Text style={styles.evolutionText}>
+                    Na próxima avaliação, você vê lado a lado o que mudou em cada grupo
+                    muscular e quanto seu score subiu.
+                  </Text>
+                </View>
+              </View>
+
+              <Text style={styles.tipText}>
+                Dica: refaça sua avaliação a cada 30 dias, com a mesma luz e o mesmo
+                horário — assim a comparação fica honesta.
+              </Text>
             </View>
           ) : null
         }
@@ -199,6 +229,38 @@ const styles = StyleSheet.create({
   startButton: { backgroundColor: '#4CAF50', borderRadius: 14, paddingVertical: 14, paddingHorizontal: 28, alignItems: 'center', justifyContent: 'center', minWidth: 220 },
   startButtonText: { color: '#0A0A0A', fontSize: 15, fontWeight: '700' },
   loadingMore: { alignItems: 'center', paddingVertical: 20 },
+
+  singleFooter: { gap: 14, marginTop: 18 },
+  newBigButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    backgroundColor: '#4CAF50',
+    borderRadius: 14,
+    paddingVertical: 16,
+  },
+  newBigButtonText: { color: '#0A0A0A', fontSize: 15, fontWeight: '700' },
+  evolutionCard: {
+    flexDirection: 'row',
+    gap: 12,
+    backgroundColor: '#111',
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: '#1F1F1F',
+    padding: 16,
+  },
+  evolutionIcon: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: 'rgba(76,175,80,0.12)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  evolutionTitle: { color: '#fff', fontSize: 14, fontWeight: '700', marginBottom: 3 },
+  evolutionText: { color: '#888', fontSize: 13, lineHeight: 19 },
+  tipText: { color: '#555', fontSize: 12, lineHeight: 18, textAlign: 'center', paddingHorizontal: 8 },
   sectionLabel: {
     fontSize: 11,
     fontWeight: '700',

@@ -53,10 +53,10 @@ const PERSONA_IMAGES: Record<string, ReturnType<typeof require>> = {
 }
 
 const QUICK_SUGGESTIONS = [
+  'Como progredir minha carga?',
   'Explique meu treino de hoje',
   'Alternativa sem equipamento',
   'Por que meu score de costas é baixo?',
-  'Como progredir minha carga?',
   'Pulei treino, como reorganizo a semana?',
 ]
 
@@ -64,6 +64,7 @@ export default function CoachScreen() {
   const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState('')
   const [isLoading, setIsLoading] = useState(false)
+  const [limitReached, setLimitReached] = useState(false)
   const [coachName, setCoachName] = useState('Rafael')
   const scrollRef = useRef<ScrollView>(null)
 
@@ -106,13 +107,22 @@ export default function CoachScreen() {
       setMessages((prev) => [...prev, coachMsg])
       if (resp.persona) setCoachName(PERSONA_NAMES[resp.persona] ?? coachName)
     } catch (err: unknown) {
-      const isOverload = (err as Error)?.message === 'CLAUDE_UNAVAILABLE'
+      const code = (err as Error)?.message
+
+      // O backend devolve 402 CHAT_LIMIT_REACHED quando o usuário free esgota as
+      // mensagens do dia. Mostrar o paywall vale mais que uma mensagem de erro.
+      if (code === 'CHAT_LIMIT_REACHED') {
+        setLimitReached(true)
+        return
+      }
+
       const errMsg: Message = {
         id: `e-${Date.now()}`,
         role: 'coach',
-        text: isOverload
-          ? 'O servidor está sobrecarregado agora. Aguarde alguns segundos e tente novamente.'
-          : 'Não consegui processar sua mensagem. Verifique sua conexão e tente novamente.',
+        text:
+          code === 'CLAUDE_UNAVAILABLE'
+            ? 'O servidor está sobrecarregado agora. Aguarde alguns segundos e tente novamente.'
+            : 'Não consegui processar sua mensagem. Verifique sua conexão e tente novamente.',
       }
       setMessages((prev) => [...prev, errMsg])
     } finally {
@@ -198,8 +208,27 @@ export default function CoachScreen() {
           </ScrollView>
         )}
 
-        {/* Input bar */}
-        <View style={styles.inputBar}>
+        {/* Input bar — trocada pelo bloqueio quando o limite gratuito acaba */}
+        {limitReached ? (
+          <View style={styles.limitBar}>
+            <View style={styles.limitIcon}>
+              <Ionicons name="lock-closed" size={16} color="#4CAF50" />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.limitTitle}>Suas 2 mensagens gratuitas acabaram</Text>
+              <Text style={styles.limitText}>
+                Converse sem limite com seu personal no plano completo.
+              </Text>
+            </View>
+            <TouchableOpacity
+              style={styles.limitBtn}
+              onPress={() => router.push('/(app)/paywall')}
+            >
+              <Text style={styles.limitBtnText}>Desbloquear</Text>
+            </TouchableOpacity>
+          </View>
+        ) : (
+          <View style={styles.inputBar}>
             <TextInput
               style={styles.textInput}
               value={input}
@@ -220,6 +249,7 @@ export default function CoachScreen() {
               <Ionicons name="send" size={18} color="#fff" />
             </TouchableOpacity>
           </View>
+        )}
       </KeyboardAvoidingView>
     </SafeAreaView>
   )
@@ -228,6 +258,33 @@ export default function CoachScreen() {
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: '#0A0A0A' },
   flex: { flex: 1 },
+
+  limitBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    backgroundColor: '#121212',
+    borderTopWidth: 1,
+    borderTopColor: '#1F1F1F',
+    padding: 14,
+  },
+  limitIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: 'rgba(76,175,80,0.12)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  limitTitle: { color: '#fff', fontSize: 13, fontWeight: '700' },
+  limitText: { color: '#888', fontSize: 12, marginTop: 1 },
+  limitBtn: {
+    backgroundColor: '#4CAF50',
+    borderRadius: 10,
+    paddingVertical: 9,
+    paddingHorizontal: 14,
+  },
+  limitBtnText: { color: '#fff', fontSize: 13, fontWeight: '700' },
 
   header: {
     flexDirection: 'row',

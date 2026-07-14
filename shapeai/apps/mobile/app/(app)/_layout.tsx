@@ -1,4 +1,5 @@
 import { Tabs, Redirect } from 'expo-router'
+import { Image } from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
 import { useAuthStore } from '../../src/stores/auth.store'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
@@ -9,6 +10,14 @@ function tabIcon(active: IoniconsName, inactive: IoniconsName) {
   return ({ color, focused }: { color: string; focused: boolean }) => (
     <Ionicons name={focused ? active : inactive} size={24} color={color} />
   )
+}
+
+// Ícone próprio (PNG com alpha) — tintColor o recolore conforme o estado da aba,
+// igual aos Ionicons.
+const BODY_SCAN = require('../../assets/icon-body-scan.png')
+
+function bodyScanIcon({ color }: { color: string }) {
+  return <Image source={BODY_SCAN} style={{ width: 24, height: 24, tintColor: color }} />
 }
 
 export default function AppLayout() {
@@ -40,7 +49,7 @@ export default function AppLayout() {
       />
       <Tabs.Screen
         name="history"
-        options={{ title: 'Avaliações', tabBarIcon: tabIcon('bar-chart', 'bar-chart-outline') }}
+        options={{ title: 'Avaliações', tabBarIcon: bodyScanIcon }}
       />
       <Tabs.Screen
         name="treino"

@@ -288,10 +288,11 @@ function MuscleRanking({ muscle_scores }: { muscle_scores: MuscleScores }) {
   )
 }
 
+// O ranking (Mais fortes / A trabalhar) vive na aba Resultado. Aqui ficam apenas
+// todos os grupos com suas pontuações.
 function MusclesTab({ muscle_scores }: { muscle_scores: MuscleScores }) {
   return (
     <ScrollView style={{ width: SCREEN_W }} contentContainerStyle={s.tabContent}>
-      <MuscleRanking muscle_scores={muscle_scores} />
       <View style={s.section}>
         <Text style={s.sectionTitle}>Todos os grupos</Text>
         {MUSCLE_GROUPS.map((group, gi) => {
@@ -463,11 +464,12 @@ export default function ReportScreen() {
         {/* Aba 1 — Resultado */}
         <ScrollView style={{ width: SCREEN_W }} contentContainerStyle={s.tabContent}>
           <HeroCard score={overallScore} date={analysis.completed_at} />
-          {bc ? <CompactBodyComp data={bc} /> : null}
           {bc?.overall_assessment ? <AssessmentCard text={bc.overall_assessment} /> : null}
+          {bc ? <CompactBodyComp data={bc} /> : null}
           {analysis.future_self_url ? (
             <FutureEvolutionCard imageUrl={analysis.future_self_url} />
           ) : null}
+          {bc?.muscle_scores ? <MuscleRanking muscle_scores={bc.muscle_scores} /> : null}
           <TouchableOpacity
             style={s.workoutButton}
             onPress={() => router.push('/(app)/treino')}

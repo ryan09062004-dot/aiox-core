@@ -5,7 +5,9 @@ import { requireAuth } from '../middleware/auth'
 
 type Persona = 'rafael' | 'marina' | 'bruno'
 
-const FREE_DAILY_LIMIT = 20
+// Limite TOTAL (não diário): o usuário free tem 2 mensagens de amostra na vida.
+// A tabela chat_usage continua registrando por dia — o limite soma todos os dias.
+const FREE_MESSAGE_LIMIT = 2
 
 const PERSONA_SYSTEM_PROMPTS: Record<Persona, string> = {
   rafael: `Você é Rafael, personal trainer com 12 anos de experiência, especializado em musculação e composição corporal.
@@ -162,15 +164,15 @@ export async function chatRoutes(app: FastifyInstance) {
       // Check rate limit for Free users before processing
       if (!isPro) {
         try {
-          const { rows: usageRows } = await pool.query<{ message_count: string }>(
-            `SELECT message_count FROM chat_usage WHERE user_id = $1 AND date = CURRENT_DATE`,
+          const { rows: usageRows } = await pool.query<{ total: string }>(
+            `SELECT COALESCE(SUM(message_count), 0) AS total FROM chat_usage WHERE user_id = $1`,
             [userId]
           )
-          const currentCount = usageRows[0] ? parseInt(usageRows[0].message_count) : 0
-          if (currentCount >= FREE_DAILY_LIMIT) {
+          const currentCount = parseInt(usageRows[0]?.total ?? '0')
+          if (currentCount >= FREE_MESSAGE_LIMIT) {
             return reply.status(402).send({
               error: 'CHAT_LIMIT_REACHED',
-              usage: { count: currentCount, limit: FREE_DAILY_LIMIT },
+              usage: { count: currentCount, limit: FREE_MESSAGE_LIMIT },
             })
           }
         } catch (usageCheckErr) {
@@ -248,18 +250,24 @@ export async function chatRoutes(app: FastifyInstance) {
         return reply.status(503).send({ error: 'CLAUDE_UNAVAILABLE' })
       }
 
-      // Increment usage counter (atomic upsert) — non-fatal if table missing
+      // Incrementa o contador do dia (upsert atômico) e devolve o TOTAL acumulado,
+      // que é o que o limite considera. Não-fatal se a tabela não existir.
       let newCount = 1
       try {
-        const { rows: newUsageRows } = await pool.query<{ message_count: string }>(
+        // Duas queries de propósito: numa CTE que escreve, o SELECT veria o snapshot
+        // anterior à escrita e o total sairia defasado em 1.
+        await pool.query(
           `INSERT INTO chat_usage (user_id, date, message_count)
            VALUES ($1, CURRENT_DATE, 1)
            ON CONFLICT (user_id, date) DO UPDATE
-             SET message_count = chat_usage.message_count + 1
-           RETURNING message_count`,
+             SET message_count = chat_usage.message_count + 1`,
           [userId]
         )
-        newCount = parseInt(newUsageRows[0].message_count)
+        const { rows: totalRows } = await pool.query<{ total: string }>(
+          `SELECT COALESCE(SUM(message_count), 0) AS total FROM chat_usage WHERE user_id = $1`,
+          [userId]
+        )
+        newCount = parseInt(totalRows[0]?.total ?? '1')
       } catch (usageErr) {
         app.log.warn({ usageErr }, 'chat_usage increment failed — non-fatal')
       }
@@ -269,7 +277,7 @@ export async function chatRoutes(app: FastifyInstance) {
         persona,
         usage: {
           count: newCount,
-          limit: isPro ? null : FREE_DAILY_LIMIT,
+          limit: isPro ? null : FREE_MESSAGE_LIMIT,
         },
       })
     }
@@ -283,14 +291,14 @@ export async function chatRoutes(app: FastifyInstance) {
       const userId = request.authUser.id
       const isPro = request.authUser.subscription_status === 'pro'
 
-      const { rows } = await pool.query<{ message_count: string }>(
-        `SELECT message_count FROM chat_usage WHERE user_id = $1 AND date = CURRENT_DATE`,
+      const { rows } = await pool.query<{ total: string }>(
+        `SELECT COALESCE(SUM(message_count), 0) AS total FROM chat_usage WHERE user_id = $1`,
         [userId]
       )
 
       return reply.send({
-        count: rows[0] ? parseInt(rows[0].message_count) : 0,
-        limit: isPro ? null : FREE_DAILY_LIMIT,
+        count: parseInt(rows[0]?.total ?? '0'),
+        limit: isPro ? null : FREE_MESSAGE_LIMIT,
       })
     }
   )
