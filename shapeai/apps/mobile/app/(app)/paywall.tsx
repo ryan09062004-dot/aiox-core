@@ -8,7 +8,6 @@ import {
   ActivityIndicator,
   Linking,
   TextInput,
-  Alert,
 } from 'react-native'
 import { router } from 'expo-router'
 import { Ionicons } from '@expo/vector-icons'
@@ -31,14 +30,21 @@ export default function PaywallScreen() {
   const [claiming, setClaiming] = useState(false)
   const [claimOpen, setClaimOpen] = useState(false)
   const [claimEmail, setClaimEmail] = useState('')
+  const [message, setMessage] = useState<{ kind: 'error' | 'success'; text: string } | null>(null)
 
+  // Alert.alert não renderiza botões no React Native Web — no PWA as mensagens ficariam
+  // invisíveis. O feedback é exibido na própria tela.
   const handleSubscribe = async () => {
     setLoading(true)
+    setMessage(null)
     try {
       const url = await createCheckout(PLAN)
       await Linking.openURL(url)
     } catch (e: unknown) {
-      Alert.alert('Erro', e instanceof Error ? e.message : 'Não foi possível abrir o checkout.')
+      setMessage({
+        kind: 'error',
+        text: e instanceof Error ? e.message : 'Não foi possível abrir o checkout.',
+      })
     } finally {
       setLoading(false)
     }
@@ -46,21 +52,21 @@ export default function PaywallScreen() {
 
   const handleClaim = async () => {
     if (!claimEmail.includes('@')) {
-      Alert.alert('E-mail inválido', 'Informe o e-mail usado na compra.')
+      setMessage({ kind: 'error', text: 'Informe o e-mail usado na compra.' })
       return
     }
     setClaiming(true)
+    setMessage(null)
     try {
       await claimPayment(claimEmail.trim())
       await refresh()
-      Alert.alert('Pronto!', 'Seu acesso foi liberado.', [
-        { text: 'Continuar', onPress: () => router.back() },
-      ])
+      setMessage({ kind: 'success', text: 'Acesso liberado! Aproveite seu plano.' })
+      setTimeout(() => router.back(), 1200)
     } catch {
-      Alert.alert(
-        'Não encontramos sua compra',
-        'Confira o e-mail usado no pagamento. Se acabou de pagar, aguarde um minuto e tente de novo.'
-      )
+      setMessage({
+        kind: 'error',
+        text: 'Não encontramos sua compra. Confira o e-mail usado no pagamento — se acabou de pagar, aguarde um minuto e tente de novo.',
+      })
     } finally {
       setClaiming(false)
     }
@@ -107,6 +113,12 @@ export default function PaywallScreen() {
           <Text style={styles.ctaText}>Desbloquear meu plano</Text>
         )}
       </TouchableOpacity>
+
+      {message && (
+        <Text style={message.kind === 'error' ? styles.msgError : styles.msgSuccess}>
+          {message.text}
+        </Text>
+      )}
 
       <Text style={styles.legal}>
         Pagamento seguro pela Cakto. Cancele quando quiser.
@@ -196,6 +208,8 @@ const styles = StyleSheet.create({
   ctaDisabled: { opacity: 0.6 },
   ctaText: { color: '#fff', fontSize: 16, fontWeight: '700' },
   legal: { color: '#555', fontSize: 11, textAlign: 'center' },
+  msgError: { color: '#E57373', fontSize: 13, textAlign: 'center', lineHeight: 19 },
+  msgSuccess: { color: '#4CAF50', fontSize: 13, textAlign: 'center', fontWeight: '600' },
 
   linkRow: { alignItems: 'center', padding: 12 },
   linkText: { color: '#888', fontSize: 13, textDecorationLine: 'underline' },

@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react'
-import { View, Text, StyleSheet, TouchableOpacity, Alert, Image } from 'react-native'
+import { View, Text, StyleSheet, TouchableOpacity, Image, Modal, Pressable } from 'react-native'
 import { CameraView, CameraType, useCameraPermissions } from 'expo-camera'
 import * as ImagePicker from 'expo-image-picker'
 import { Ionicons } from '@expo/vector-icons'
@@ -28,6 +28,7 @@ export default function CaptureScreen() {
   const [screenState, setScreenState] = useState<ScreenState>('camera')
   const [frontPhotoUri, setFrontPhotoUri] = useState<string | null>(null)
   const [previewUri, setPreviewUri] = useState<string | null>(null)
+  const [confirmSkip, setConfirmSkip] = useState(false)
   const cameraRef = useRef<CameraView>(null)
 
   const goToSignup = (front: string, back: string | null) => {
@@ -91,16 +92,11 @@ export default function CaptureScreen() {
     goToSignup(frontPhotoUri, previewUri)
   }
 
+  // Alert.alert não dispara callbacks de botão no React Native Web — no PWA o "Pular"
+  // ficaria inerte. Um Modal funciona nas duas plataformas.
   const handleSkipBack = () => {
     if (!frontPhotoUri) return
-    Alert.alert(
-      'Pular a foto de costas?',
-      'Sua análise fica pronta do mesmo jeito, mas dorsais, trapézio e glúteos ficam estimados em vez de avaliados. Você pode completar depois.',
-      [
-        { text: 'Vou tirar', style: 'cancel' },
-        { text: 'Pular mesmo assim', onPress: () => goToSignup(frontPhotoUri, null) },
-      ]
-    )
+    setConfirmSkip(true)
   }
 
   if (screenState === 'preview' && previewUri) {
@@ -129,6 +125,35 @@ export default function CaptureScreen() {
 
   return (
     <View style={styles.container}>
+      <Modal
+        visible={confirmSkip}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setConfirmSkip(false)}
+      >
+        <Pressable style={styles.modalOverlay} onPress={() => setConfirmSkip(false)}>
+          <Pressable style={styles.modalCard} onPress={(e) => e.stopPropagation()}>
+            <Text style={styles.modalTitle}>Pular a foto de costas?</Text>
+            <Text style={styles.modalText}>
+              Sua análise fica pronta do mesmo jeito, mas dorsais, trapézio e glúteos ficam
+              estimados em vez de avaliados. Você pode completar depois.
+            </Text>
+            <TouchableOpacity style={styles.modalPrimary} onPress={() => setConfirmSkip(false)}>
+              <Text style={styles.modalPrimaryText}>Vou tirar</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.modalSecondary}
+              onPress={() => {
+                setConfirmSkip(false)
+                if (frontPhotoUri) goToSignup(frontPhotoUri, null)
+              }}
+            >
+              <Text style={styles.modalSecondaryText}>Pular mesmo assim</Text>
+            </TouchableOpacity>
+          </Pressable>
+        </Pressable>
+      </Modal>
+
       <View style={styles.header}>
         <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
           <Ionicons name="chevron-back" size={22} color="#fff" />
@@ -172,6 +197,32 @@ export default function CaptureScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#000' },
+
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.75)',
+    justifyContent: 'center',
+    padding: 28,
+  },
+  modalCard: {
+    backgroundColor: '#151515',
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: '#242424',
+    padding: 22,
+    gap: 10,
+  },
+  modalTitle: { color: '#fff', fontSize: 18, fontWeight: '700' },
+  modalText: { color: '#999', fontSize: 14, lineHeight: 20, marginBottom: 6 },
+  modalPrimary: {
+    backgroundColor: '#4CAF50',
+    borderRadius: 12,
+    padding: 15,
+    alignItems: 'center',
+  },
+  modalPrimaryText: { color: '#fff', fontSize: 15, fontWeight: '700' },
+  modalSecondary: { padding: 12, alignItems: 'center' },
+  modalSecondaryText: { color: '#888', fontSize: 14 },
 
   permissionContainer: {
     flex: 1,
