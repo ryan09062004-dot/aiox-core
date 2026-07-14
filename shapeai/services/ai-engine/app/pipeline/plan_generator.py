@@ -185,7 +185,17 @@ def _fallback_plan(scores: dict) -> WorkoutPlan:
 
 
 def generate_workout_plan(scores: dict, body_composition: dict, profile: dict) -> WorkoutPlan:
-    """Generate 4-week workout plan via Claude with system-prompt caching."""
+    """Plano de treino de 4 semanas.
+
+    Por padrão usa o plano determinístico (_fallback_plan): ele já monta as 4 semanas com
+    variação de exercícios e dedica a sexta ao grupo mais fraco, em milissegundos.
+
+    A geração via Claude custava ~102s — 82% do tempo TOTAL da análise — e era o gargalo
+    do pipeline inteiro. Para reativá-la, defina WORKOUT_PLAN_LLM=true.
+    """
+    if os.getenv("WORKOUT_PLAN_LLM", "false").lower() != "true":
+        return _fallback_plan(scores)
+
     fat_pct = body_composition.get("body_fat_estimate", 0)
     fat_areas = ", ".join(body_composition.get("fat_areas", [])) or "não identificadas"
     weaknesses = body_composition.get("weaknesses_summary", "")
