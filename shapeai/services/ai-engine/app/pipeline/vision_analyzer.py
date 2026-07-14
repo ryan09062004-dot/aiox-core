@@ -157,13 +157,24 @@ def _fallback_composition(profile: dict) -> BodyComposition:
     )
 
 
+FRONT_ONLY_NOTE = """
+ATENÇÃO: apenas a foto de FRENTE foi enviada. Avalie normalmente os grupos visíveis
+de frente. Para dorsais (lats), trapézio (traps) e glúteos (glutes), que não são
+visíveis nesta foto, produza uma ESTIMATIVA conservadora a partir do restante do
+físico e do perfil, e deixe isso explícito no campo `note` de cada um.
+"""
+
+
 def analyze_body_vision(
-    front_bytes: bytes, back_bytes: bytes, profile: dict
+    front_bytes: bytes, back_bytes: bytes | None, profile: dict
 ) -> BodyComposition:
-    """Analisa composição corporal e pontuação muscular usando Claude Vision."""
+    """Analisa composição corporal e pontuação muscular usando Claude Vision.
+
+    A foto de costas é opcional: quando ausente, dorsais, trapézio e glúteos são
+    estimados a partir da foto de frente e do perfil, em vez de avaliados.
+    """
     try:
         front_resized = _resize_image(front_bytes)
-        back_resized = _resize_image(back_bytes)
 
         profile_context = (
             f"Perfil: sexo={profile.get('sex','?')}, "
@@ -172,36 +183,36 @@ def analyze_body_vision(
             f"objetivo={profile.get('goal','geral')}"
         )
 
+        content: list[dict] = [
+            {
+                "type": "image",
+                "source": {
+                    "type": "base64",
+                    "media_type": "image/jpeg",
+                    "data": _to_base64(front_resized),
+                },
+            }
+        ]
+
+        if back_bytes is not None:
+            content.append(
+                {
+                    "type": "image",
+                    "source": {
+                        "type": "base64",
+                        "media_type": "image/jpeg",
+                        "data": _to_base64(_resize_image(back_bytes)),
+                    },
+                }
+            )
+
+        prompt = VISION_PROMPT if back_bytes is not None else f"{VISION_PROMPT}\n{FRONT_ONLY_NOTE}"
+        content.append({"type": "text", "text": f"{prompt}\n\n{profile_context}"})
+
         response = client.messages.create(
             model="claude-sonnet-4-6",
             max_tokens=2048,
-            messages=[
-                {
-                    "role": "user",
-                    "content": [
-                        {
-                            "type": "image",
-                            "source": {
-                                "type": "base64",
-                                "media_type": "image/jpeg",
-                                "data": _to_base64(front_resized),
-                            },
-                        },
-                        {
-                            "type": "image",
-                            "source": {
-                                "type": "base64",
-                                "media_type": "image/jpeg",
-                                "data": _to_base64(back_resized),
-                            },
-                        },
-                        {
-                            "type": "text",
-                            "text": f"{VISION_PROMPT}\n\n{profile_context}",
-                        },
-                    ],
-                }
-            ],
+            messages=[{"role": "user", "content": content}],
         )
 
         raw = response.content[0].text.strip()

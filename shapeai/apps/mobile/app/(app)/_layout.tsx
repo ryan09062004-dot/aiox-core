@@ -58,9 +58,9 @@ export default function AppLayout() {
       <Tabs.Screen name="camera"    options={{ href: null }} />
       <Tabs.Screen name="photo-tip" options={{ href: null }} />
       <Tabs.Screen name="analysis"  options={{ href: null }} />
-      <Tabs.Screen name="paywall"   options={{ href: null }} />
       <Tabs.Screen name="compare"   options={{ href: null }} />
       <Tabs.Screen name="onboarding" options={{ href: null }} />
+      <Tabs.Screen name="paywall"   options={{ href: null }} />
     </Tabs>
   )
 }

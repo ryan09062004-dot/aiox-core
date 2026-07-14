@@ -121,8 +121,13 @@ export async function uploadPhoto(presignedUrl: string, photoUri: string): Promi
   }
 }
 
-export async function triggerProcessing(analysisId: string): Promise<void> {
-  await apiPost(`/analyses/${analysisId}/process`)
+// has_back=false quando a pessoa pula a foto de costas: o backend limpa photo_back_url
+// e o pipeline roda só com a frente, estimando dorsais, trapézio e glúteos.
+export async function triggerProcessing(
+  analysisId: string,
+  options: { has_back: boolean } = { has_back: true }
+): Promise<void> {
+  await apiPost(`/analyses/${analysisId}/process`, options)
 }
 
 export async function getAnalysisStatus(analysisId: string): Promise<AnalysisStatusResponse> {

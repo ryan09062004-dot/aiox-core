@@ -40,7 +40,9 @@ export default function Index() {
   const { session, isGuest, isLoading } = useAuthStore()
   if (isLoading) return <LoadingScreen />
 
-  if (!session && !isGuest) return <Redirect href="/(auth)/login" />
+  // Sem sessão, a pessoa entra pelo funil (quiz → foto → cadastro), não pelo login.
+  // O login continua acessível como link dentro do quiz e do signup.
+  if (!session && !isGuest) return <Redirect href="/(public)/quiz" />
   return <Redirect href="/(app)" />
 }
 

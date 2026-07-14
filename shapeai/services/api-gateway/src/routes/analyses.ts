@@ -49,7 +49,7 @@ export async function analysesRoutes(app: FastifyInstance) {
   })
 
   // POST /analyses/:id/process — dispara pipeline no ai-engine (async)
-  app.post<{ Params: { id: string } }>(
+  app.post<{ Params: { id: string }; Body: { has_back?: boolean } }>(
     '/analyses/:id/process',
     { preHandler: requireAuth },
     async (request, reply) => {
@@ -63,6 +63,13 @@ export async function analysesRoutes(app: FastifyInstance) {
 
       if (!rows[0]) return reply.status(404).send({ error: 'Analysis not found' })
       if (rows[0].user_id !== userId) return reply.status(403).send({ error: 'Forbidden' })
+
+      // A foto de costas é opcional no funil. Quando a pessoa pula, nenhum objeto foi
+      // enviado para a chave `back` no S3 — limpar a coluna evita que o ai-engine
+      // tente baixar um objeto inexistente.
+      if (request.body?.has_back === false) {
+        await pool.query(`UPDATE analyses SET photo_back_url = NULL WHERE id = $1`, [id])
+      }
 
       // Disparo assíncrono — não aguarda resultado
       const aiEngineUrl = process.env.AI_ENGINE_URL ?? 'http://localhost:8000'

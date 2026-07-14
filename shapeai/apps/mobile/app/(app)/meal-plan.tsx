@@ -1,10 +1,11 @@
-import { useEffect, useState, useCallback } from 'react'
+import { useState, useCallback } from 'react'
 import {
   View, Text, ScrollView, StyleSheet,
   TouchableOpacity, ActivityIndicator, Modal, Pressable, Image, Alert,
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { router } from 'expo-router'
+import AsyncStorage from '@react-native-async-storage/async-storage'
+import { router, useFocusEffect } from 'expo-router'
 import { Ionicons } from '@expo/vector-icons'
 import * as ImagePicker from 'expo-image-picker'
 import type { MealPlan, MealItem } from '@shapeai/shared'
@@ -12,8 +13,16 @@ import {
   listMealPlans, getMealPlanById, getLatestMealPlan, generateMealPlan,
   type MealPlanSummary,
 } from '../../src/services/meal-plan.service'
+import { listAnalyses } from '../../src/services/analysis.service'
 import { analyzeFoodImage, type FoodAnalysis } from '../../src/services/food.service'
 import { getMealImage } from '../../src/constants/meal-images'
+import { LockedSection } from '../../src/components/paywall/LockedSection'
+import { useSubscription } from '../../src/hooks/useSubscription'
+import { PHOTO_TIP_STORAGE_KEY } from './photo-tip'
+
+// TEMP: rodapé "Ver detalhes · N opções" dos cards de refeição ocultado temporariamente.
+// Voltar para true quando for reexibir.
+const SHOW_MEAL_DETAILS_FOOTER = false
 
 const MEAL_ICONS: Record<string, string> = {
   'Café da Manhã': '☀️',
@@ -65,12 +74,15 @@ function MealCard({ meal }: { meal: MealItem }) {
           <MacroChip label="Gordura" value={current.fats_g} unit="g" />
         </View>
 
-        <View style={styles.cardFooter}>
-          <Text style={styles.cardFooterText}>
-            {hasAlts ? `Ver detalhes · ${allOptions.length} opções` : 'Ver detalhes'}
-          </Text>
-          <Ionicons name="chevron-forward" size={13} color="#4CAF50" />
-        </View>
+        {/* TEMP: "Ver detalhes · N opções" ocultado temporariamente (SHOW_MEAL_DETAILS_FOOTER=false) */}
+        {SHOW_MEAL_DETAILS_FOOTER && (
+          <View style={styles.cardFooter}>
+            <Text style={styles.cardFooterText}>
+              {hasAlts ? `Ver detalhes · ${allOptions.length} opções` : 'Ver detalhes'}
+            </Text>
+            <Ionicons name="chevron-forward" size={13} color="#4CAF50" />
+          </View>
+        )}
       </TouchableOpacity>
 
       <Modal
@@ -231,11 +243,23 @@ export default function MealPlanScreen() {
   const [scanning, setScanning] = useState(false)
   const [scanModalOpen, setScanModalOpen] = useState(false)
   const [showPicker, setShowPicker] = useState(false)
+  const [hasAnalysis, setHasAnalysis] = useState(false)
 
-  useEffect(() => {
-    async function init() {
-      try {
-        const [list, latest] = await Promise.allSettled([
+  const init = useCallback(async () => {
+    setLoading(true)
+    try {
+      // O cardápio só existe após a primeira avaliação. Sem avaliação concluída,
+      // mostramos o estado vazio que leva o usuário a fazer a avaliação.
+      const analysesRes = await listAnalyses(1).catch(() => null)
+      const completed = analysesRes?.analyses.filter((a) => a.status === 'completed') ?? []
+      if (completed.length === 0) {
+        setHasAnalysis(false)
+        setLoading(false)
+        return
+      }
+      setHasAnalysis(true)
+
+      const [list, latest] = await Promise.allSettled([
           listMealPlans(),
           getLatestMealPlan(),
         ])
@@ -258,9 +282,7 @@ export default function MealPlanScreen() {
               setSummaries([{ id: newPlan.id, goal: newPlan.goal, generated_at: newPlan.generated_at }])
             } catch (genErr: unknown) {
               const e = genErr as Error
-              if (!e.message.includes('402') && !e.message.includes('SUBSCRIPTION_REQUIRED')) {
-                setError(e.message ?? 'Erro ao gerar plano alimentar.')
-              }
+              setError(e.message ?? 'Erro ao gerar plano alimentar.')
             } finally {
               setGenerating(false)
             }
@@ -270,9 +292,9 @@ export default function MealPlanScreen() {
       } finally {
         setLoading(false)
       }
-    }
-    init()
   }, [])
+
+  useFocusEffect(useCallback(() => { init() }, [init]))
 
   const selectPlan = useCallback(async (id: string) => {
     if (id === selectedId) return
@@ -329,15 +351,13 @@ export default function MealPlanScreen() {
       })
     } catch (err: unknown) {
       const e = err as Error
-      if (e.message === 'SUBSCRIPTION_REQUIRED' || e.message.includes('402')) {
-        router.push('/(app)/paywall')
-        return
-      }
       setError(e.message ?? 'Erro ao gerar plano alimentar.')
     } finally {
       setGenerating(false)
     }
   }, [])
+
+  const { isPro } = useSubscription()
 
   const meals: MealItem[] = Array.isArray(plan?.meals) ? plan.meals : []
   const totalCal = meals.reduce((s, m) => s + (m.calories_approx ?? 0), 0)
@@ -350,6 +370,27 @@ export default function MealPlanScreen() {
   const handleSelectPlan = async (id: string) => {
     setShowPicker(false)
     await selectPlan(id)
+  }
+
+  const handleNewAnalysis = async () => {
+    const skip = await AsyncStorage.getItem(PHOTO_TIP_STORAGE_KEY)
+    router.push((skip === 'true' ? '/(app)/camera' : '/(app)/photo-tip') as never)
+  }
+
+  // Sem avaliação concluída: o cardápio ainda não existe. Direciona para a avaliação.
+  if (!loading && !hasAnalysis) {
+    return (
+      <View style={styles.emptyContainer}>
+        <Ionicons name="restaurant-outline" size={56} color="#2a2a2a" />
+        <Text style={styles.emptyTitle}>Nenhum plano alimentar</Text>
+        <Text style={styles.emptySub}>
+          Faça sua avaliação de shape para receber um plano alimentar personalizado com base no seu corpo e objetivo.
+        </Text>
+        <TouchableOpacity style={styles.ctaBtn} onPress={handleNewAnalysis}>
+          <Text style={styles.ctaBtnText}>Fazer Avaliação</Text>
+        </TouchableOpacity>
+      </View>
+    )
   }
 
   return (
@@ -448,10 +489,23 @@ export default function MealPlanScreen() {
                 <View style={styles.center}>
                   <Text style={styles.emptyText}>Nenhuma refeição encontrada.</Text>
                 </View>
+              ) : isPro ? (
+                meals.map((meal, i) => <MealCard key={i} meal={meal} />)
               ) : (
-                meals.map((meal, i) => (
-                  <MealCard key={i} meal={meal} />
-                ))
+                <>
+                  {/* Os macros do dia e a primeira refeição ficam livres: a pessoa vê que o
+                      plano é real e específico. O cardápio completo é o que ela compra. */}
+                  <MealCard meal={meals[0]} />
+                  <LockedSection
+                    title={`Mais ${meals.length - 1} refeições no seu dia`}
+                    description="Seu cardápio completo, com porções, macros por refeição e opções de troca."
+                    cta="Desbloquear meu cardápio"
+                  >
+                    {meals.slice(1, 3).map((meal, i) => (
+                      <MealCard key={i} meal={meal} />
+                    ))}
+                  </LockedSection>
+                </>
               )}
             </>
           )}
@@ -619,6 +673,18 @@ const styles = StyleSheet.create({
 
   emptyTitle: { color: '#fff', fontSize: 20, fontWeight: '700', textAlign: 'center' },
   emptyText: { color: '#666', fontSize: 14, textAlign: 'center', lineHeight: 22, maxWidth: 280 },
+  emptyContainer: {
+    flex: 1, backgroundColor: '#0A0A0A',
+    justifyContent: 'center', alignItems: 'center', padding: 40, gap: 16,
+  },
+  emptySub: { color: '#555', fontSize: 14, textAlign: 'center', lineHeight: 20 },
+  ctaBtn: {
+    backgroundColor: '#4CAF50', borderRadius: 14,
+    paddingVertical: 14, paddingHorizontal: 28,
+    alignItems: 'center', justifyContent: 'center',
+    minWidth: 220,
+  },
+  ctaBtnText: { color: '#0A0A0A', fontSize: 15, fontWeight: '700' },
   generateBtn: {
     backgroundColor: '#4CAF50', borderRadius: 14,
     paddingVertical: 14, paddingHorizontal: 28,

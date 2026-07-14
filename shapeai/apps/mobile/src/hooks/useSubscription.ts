@@ -1,50 +1,53 @@
-import { useState, useEffect, useCallback } from 'react'
-import { apiGet } from '../services/api.client'
+import { useCallback, useEffect, useState } from 'react'
+import { useFocusEffect } from 'expo-router'
+import { getSubscriptionStatus, type SubscriptionStatus } from '../services/subscription.service'
+import { useAuthStore } from '../stores/auth.store'
 
-export interface SubscriptionStatus {
-  status: 'free' | 'pro'
-  expires_at: string | null
+interface UseSubscription {
+  isPro: boolean
+  isLoading: boolean
+  expiresAt: string | null
+  refresh: () => Promise<void>
 }
 
-export function useSubscription() {
-  const [subscription, setSubscription] = useState<SubscriptionStatus | null>(null)
+/**
+ * Status de assinatura da conta logada. Revalida sempre que a tela ganha foco — é assim
+ * que o acesso é liberado quando a pessoa volta do checkout da Cakto em outra aba.
+ */
+export function useSubscription(): UseSubscription {
+  const session = useAuthStore((s) => s.session)
+  const [status, setStatus] = useState<SubscriptionStatus | null>(null)
   const [isLoading, setIsLoading] = useState(true)
 
-  const refresh = useCallback(() => {
-    apiGet<SubscriptionStatus>('/subscription/status')
-      .then(setSubscription)
-      .catch(() => setSubscription({ status: 'free', expires_at: null }))
-      .finally(() => setIsLoading(false))
-  }, [])
+  const refresh = useCallback(async () => {
+    if (!session) {
+      setStatus(null)
+      setIsLoading(false)
+      return
+    }
+    try {
+      setStatus(await getSubscriptionStatus())
+    } catch {
+      // Falha de rede não deve liberar conteúdo pago — mantém o último status conhecido.
+    } finally {
+      setIsLoading(false)
+    }
+  }, [session])
 
   useEffect(() => {
     refresh()
   }, [refresh])
 
-  // Polling pós-compra: verifica a cada 2s até status pro ou esgotamento (10s)
-  const pollUntilPro = useCallback(
-    (options = { intervalMs: 2000, maxAttempts: 5 }): Promise<void> =>
-      new Promise((resolve) => {
-        let attempts = 0
-        const interval = setInterval(async () => {
-          attempts++
-          try {
-            const status = await apiGet<SubscriptionStatus>('/subscription/status')
-            setSubscription(status)
-            if (status.status === 'pro' || attempts >= options.maxAttempts) {
-              clearInterval(interval)
-              resolve()
-            }
-          } catch {
-            if (attempts >= options.maxAttempts) {
-              clearInterval(interval)
-              resolve()
-            }
-          }
-        }, options.intervalMs)
-      }),
-    []
+  useFocusEffect(
+    useCallback(() => {
+      refresh()
+    }, [refresh])
   )
 
-  return { subscription, isLoading, pollUntilPro }
+  return {
+    isPro: status?.status === 'pro',
+    isLoading,
+    expiresAt: status?.expires_at ?? null,
+    refresh,
+  }
 }

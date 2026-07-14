@@ -50,9 +50,11 @@ async def analyze(request: AnalyzeRequest):
             raise ValueError(f"Analysis {analysis_id} not found")
 
         front_url: str = analysis["photo_front_url"]
-        back_url: str = analysis["photo_back_url"]
-        if not front_url or not back_url:
-            raise ValueError("Missing photo URLs")
+        # A foto de costas é opcional — quando a pessoa pula no funil, o gateway
+        # zera photo_back_url e o pipeline segue só com a frente.
+        back_url: str | None = analysis["photo_back_url"]
+        if not front_url:
+            raise ValueError("Missing front photo URL")
 
         profile = {
             "sex": analysis.get("sex"),
@@ -63,9 +65,9 @@ async def analyze(request: AnalyzeRequest):
 
         # 2. Download photos em paralelo
         loop = asyncio.get_event_loop()
-        front_bytes, back_bytes = await asyncio.gather(
-            loop.run_in_executor(None, download_photo, front_url),
-            loop.run_in_executor(None, download_photo, back_url),
+        front_bytes = await loop.run_in_executor(None, download_photo, front_url)
+        back_bytes = (
+            await loop.run_in_executor(None, download_photo, back_url) if back_url else None
         )
 
         # 3. Claude Vision — análise completa com scores musculares

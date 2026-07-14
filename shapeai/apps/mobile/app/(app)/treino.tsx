@@ -13,8 +13,14 @@ import { listAnalyses, getAnalysisResult } from '../../src/services/analysis.ser
 import { getUserProfile } from '../../src/services/profile.service'
 import WorkoutDayCard from '../../src/components/workout/WorkoutDayCard'
 import { WorkoutShareCard } from '../../src/components/workout/WorkoutShareCard'
+import { LockedSection } from '../../src/components/paywall/LockedSection'
+import { useSubscription } from '../../src/hooks/useSubscription'
 import { PHOTO_TIP_STORAGE_KEY } from './photo-tip'
 import { STANDARD_HOME_PLAN } from '../../src/data/home-workout'
+
+// TEMP: seletor de avaliação ("Mais recente") ocultado temporariamente.
+// Voltar para true quando for reexibir o seletor na aba Treino.
+const SHOW_ANALYSIS_PICKER = false
 
 function storageKey(id: string) { return `workout_progress_${id}` }
 function modeKey(id: string) { return `workout_mode_${id}` }
@@ -50,6 +56,7 @@ export default function TreinoTab() {
   const [completed, setCompleted] = useState<Set<string>>(new Set())
   const [shareTarget, setShareTarget] = useState<{ session: WorkoutSession; weekNumber: number } | null>(null)
   const [workoutMode, setWorkoutMode] = useState<'gym' | 'home'>('gym')
+  const { isPro } = useSubscription()
 
   const loadWorkout = useCallback(async (analysis: AnalysisSummary, isInitial = false) => {
     if (!isInitial) setLoadingWorkout(true)
@@ -151,6 +158,10 @@ export default function TreinoTab() {
   const selectedAnalysis = completedAnalyses[selectedIndex]
   const currentWeek = weeks[selectedWeek]
   const displaySessions = applyWorkoutMode(currentWeek?.sessions ?? [], workoutMode)
+
+  // A semana 1 fica aberta: mostrar o treino real é o que faz a pessoa querer o resto.
+  // A progressão (semanas 2+) é o que ela compra.
+  const isWeekLocked = (index: number) => !isPro && index > 0
   const goalLabel = goal ? GOAL_LABEL[goal] : '—'
   const sessionsPerWeek = weeks[0]?.sessions.length ?? 0
   const totalSessions = weeks.reduce((s, w) => s + w.sessions.length, 0)
@@ -187,7 +198,8 @@ export default function TreinoTab() {
       </Modal>
 
       <View style={[styles.headerCard, { paddingTop: insets.top + 16 }]}>
-        {completedAnalyses.length > 1 && (
+        {/* TEMP: seletor "Mais recente" ocultado temporariamente (SHOW_ANALYSIS_PICKER=false) */}
+        {SHOW_ANALYSIS_PICKER && completedAnalyses.length > 1 && (
           <View style={styles.pickerRow}>
             <TouchableOpacity style={styles.pickerTrigger} onPress={() => setShowPicker(true)}>
               <Text style={styles.pickerTriggerText}>
@@ -264,6 +276,7 @@ export default function TreinoTab() {
               style={[styles.tab, selectedWeek === index && styles.tabActive]}
               onPress={() => setSelectedWeek(index)}
             >
+              {isWeekLocked(index) && <Ionicons name="lock-closed" size={11} color="#666" />}
               <Text style={[styles.tabText, selectedWeek === index && styles.tabTextActive]}>
                 Semana {week.week_number}
               </Text>
@@ -274,15 +287,33 @@ export default function TreinoTab() {
         <View style={styles.daysCards}>
           {loadingWorkout ? (
             <ActivityIndicator color="#4CAF50" style={{ marginTop: 40 }} />
-          ) : displaySessions.map((session, i) => (
-            <WorkoutDayCard
-              key={i}
-              session={session}
-              isCompleted={completed.has(sessionKey(currentWeek.week_number, session.day))}
-              onToggle={() => toggleSession(currentWeek.week_number, session.day)}
-              onShare={() => setShareTarget({ session, weekNumber: currentWeek.week_number })}
-            />
-          ))}
+          ) : isWeekLocked(selectedWeek) ? (
+            <LockedSection
+              title={`Semana ${currentWeek.week_number} está no plano completo`}
+              description="A semana 1 é sua. As próximas trazem a progressão de carga e volume que faz o resultado acontecer."
+              cta="Desbloquear as 4 semanas"
+            >
+              {displaySessions.slice(0, 2).map((session, i) => (
+                <WorkoutDayCard
+                  key={i}
+                  session={session}
+                  isCompleted={false}
+                  onToggle={() => {}}
+                  onShare={() => {}}
+                />
+              ))}
+            </LockedSection>
+          ) : (
+            displaySessions.map((session, i) => (
+              <WorkoutDayCard
+                key={i}
+                session={session}
+                isCompleted={completed.has(sessionKey(currentWeek.week_number, session.day))}
+                onToggle={() => toggleSession(currentWeek.week_number, session.day)}
+                onShare={() => setShareTarget({ session, weekNumber: currentWeek.week_number })}
+              />
+            ))
+          )}
         </View>
       </ScrollView>
 
@@ -365,6 +396,7 @@ const styles = StyleSheet.create({
   tabsScroll: { maxHeight: 56, marginTop: 14 },
   tabsContent: { paddingHorizontal: 20, paddingVertical: 8, gap: 8, alignItems: 'center' },
   tab: {
+    flexDirection: 'row', alignItems: 'center', gap: 5,
     paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20,
     backgroundColor: '#111', borderWidth: 1, borderColor: '#1E1E1E',
   },
