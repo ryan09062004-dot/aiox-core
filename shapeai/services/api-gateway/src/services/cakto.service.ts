@@ -1,23 +1,21 @@
 import { randomBytes } from 'crypto'
 import type { Pool } from 'pg'
 
-export type PlanId = 'monthly' | 'quarterly' | 'annual'
+export type PlanId = 'monthly'
 
-export const PLAN_IDS: PlanId[] = ['monthly', 'quarterly', 'annual']
+export const PLAN_IDS: PlanId[] = ['monthly']
 
-// Cada plano é uma oferta na Cakto. As URLs vêm do ambiente para não acoplar o código
-// aos ids de oferta.
+// Oferta única: mensal de R$ 29,90. A URL pode ser sobrescrita por ambiente, mas o
+// padrão é a oferta ativa na Cakto — é um link público de checkout, não um segredo.
+const DEFAULT_CHECKOUT_URL = 'https://pay.cakto.com.br/j73s7m2_940797'
+
 const PLAN_ENV: Record<PlanId, string> = {
   monthly: 'CAKTO_CHECKOUT_URL_MONTHLY',
-  quarterly: 'CAKTO_CHECKOUT_URL_QUARTERLY',
-  annual: 'CAKTO_CHECKOUT_URL_ANNUAL',
 }
 
 // Duração concedida quando o webhook não informa uma data de expiração.
 const PLAN_DURATION_DAYS: Record<PlanId, number> = {
   monthly: 30,
-  quarterly: 90,
-  annual: 365,
 }
 
 const TOKEN_PREFIX = 'sa_'
@@ -38,7 +36,7 @@ export function isPlanId(value: unknown): value is PlanId {
  * vinculação NÃO depende dele, já que a pessoa pode pagar com outro e-mail.
  */
 export function buildCheckoutUrl(plan: PlanId, token: string, email: string): string | null {
-  const base = process.env[PLAN_ENV[plan]]
+  const base = process.env[PLAN_ENV[plan]] || DEFAULT_CHECKOUT_URL
   if (!base) return null
 
   const url = new URL(base)

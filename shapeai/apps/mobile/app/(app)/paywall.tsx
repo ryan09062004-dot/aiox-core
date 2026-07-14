@@ -15,39 +15,7 @@ import { Ionicons } from '@expo/vector-icons'
 import { claimPayment, createCheckout, type PlanId } from '../../src/services/subscription.service'
 import { useSubscription } from '../../src/hooks/useSubscription'
 
-interface Plan {
-  id: PlanId
-  label: string
-  price: string
-  caption: string
-  badge?: string
-  savings?: string
-}
-
-// A anual é a âncora: é ela que carrega a maior parte da receita nesse tipo de funil.
-const PLANS: Plan[] = [
-  {
-    id: 'annual',
-    label: 'Anual',
-    price: 'R$ 149,90',
-    caption: 'R$ 12,49 por mês, cobrado uma vez por ano',
-    badge: 'Melhor valor',
-    savings: 'Economize 58%',
-  },
-  {
-    id: 'quarterly',
-    label: 'Trimestral',
-    price: 'R$ 59,90',
-    caption: 'R$ 19,97 por mês, cobrado a cada 3 meses',
-    savings: 'Economize 33%',
-  },
-  {
-    id: 'monthly',
-    label: 'Mensal',
-    price: 'R$ 29,90',
-    caption: 'Cobrado todo mês, cancele quando quiser',
-  },
-]
+const PLAN: PlanId = 'monthly'
 
 const BENEFITS = [
   'Plano de treino completo, semana a semana',
@@ -59,7 +27,6 @@ const BENEFITS = [
 
 export default function PaywallScreen() {
   const { refresh } = useSubscription()
-  const [selected, setSelected] = useState<PlanId>('annual')
   const [loading, setLoading] = useState(false)
   const [claiming, setClaiming] = useState(false)
   const [claimOpen, setClaimOpen] = useState(false)
@@ -68,7 +35,7 @@ export default function PaywallScreen() {
   const handleSubscribe = async () => {
     setLoading(true)
     try {
-      const url = await createCheckout(selected)
+      const url = await createCheckout(PLAN)
       await Linking.openURL(url)
     } catch (e: unknown) {
       Alert.alert('Erro', e instanceof Error ? e.message : 'Não foi possível abrir o checkout.')
@@ -119,35 +86,15 @@ export default function PaywallScreen() {
         ))}
       </View>
 
-      {PLANS.map((plan) => {
-        const active = selected === plan.id
-        return (
-          <TouchableOpacity
-            key={plan.id}
-            style={[styles.planCard, active && styles.planCardActive]}
-            onPress={() => setSelected(plan.id)}
-          >
-            <View style={styles.radio}>
-              {active && <View style={styles.radioDot} />}
-            </View>
-            <View style={{ flex: 1 }}>
-              <View style={styles.planHeader}>
-                <Text style={styles.planLabel}>{plan.label}</Text>
-                {plan.badge && (
-                  <View style={styles.badge}>
-                    <Text style={styles.badgeText}>{plan.badge}</Text>
-                  </View>
-                )}
-              </View>
-              <Text style={styles.planCaption}>{plan.caption}</Text>
-            </View>
-            <View style={styles.planPriceBox}>
-              <Text style={styles.planPrice}>{plan.price}</Text>
-              {plan.savings && <Text style={styles.planSavings}>{plan.savings}</Text>}
-            </View>
-          </TouchableOpacity>
-        )
-      })}
+      <View style={styles.planCard}>
+        <Text style={styles.planLabel}>Plano mensal</Text>
+        <View style={styles.priceRow}>
+          <Text style={styles.priceCurrency}>R$</Text>
+          <Text style={styles.priceValue}>29,90</Text>
+          <Text style={styles.pricePeriod}>/mês</Text>
+        </View>
+        <Text style={styles.planCaption}>Cancele quando quiser, sem multa.</Text>
+      </View>
 
       <TouchableOpacity
         style={[styles.cta, loading && styles.ctaDisabled]}
@@ -223,39 +170,21 @@ const styles = StyleSheet.create({
   benefitText: { color: '#ccc', fontSize: 13, flex: 1 },
 
   planCard: {
-    flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
-    backgroundColor: '#141414',
-    borderRadius: 14,
-    borderWidth: 2,
-    borderColor: '#1F1F1F',
-    padding: 16,
-  },
-  planCardActive: { borderColor: '#4CAF50', backgroundColor: '#161D17' },
-  radio: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
+    backgroundColor: '#161D17',
+    borderRadius: 16,
     borderWidth: 2,
     borderColor: '#4CAF50',
-    justifyContent: 'center',
-    alignItems: 'center',
+    paddingVertical: 22,
+    paddingHorizontal: 16,
+    gap: 2,
   },
-  radioDot: { width: 10, height: 10, borderRadius: 5, backgroundColor: '#4CAF50' },
-  planHeader: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  planLabel: { color: '#fff', fontSize: 16, fontWeight: '700' },
-  planCaption: { color: '#888', fontSize: 12, marginTop: 2 },
-  badge: {
-    backgroundColor: '#4CAF50',
-    borderRadius: 6,
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-  },
-  badgeText: { color: '#fff', fontSize: 10, fontWeight: '700' },
-  planPriceBox: { alignItems: 'flex-end' },
-  planPrice: { color: '#fff', fontSize: 16, fontWeight: '700' },
-  planSavings: { color: '#4CAF50', fontSize: 11, fontWeight: '600', marginTop: 2 },
+  planLabel: { color: '#4CAF50', fontSize: 13, fontWeight: '700', letterSpacing: 0.5 },
+  priceRow: { flexDirection: 'row', alignItems: 'baseline', gap: 3 },
+  priceCurrency: { color: '#fff', fontSize: 18, fontWeight: '600' },
+  priceValue: { color: '#fff', fontSize: 42, fontWeight: '800' },
+  pricePeriod: { color: '#888', fontSize: 15, fontWeight: '600' },
+  planCaption: { color: '#888', fontSize: 12, marginTop: 4 },
 
   cta: {
     backgroundColor: '#4CAF50',

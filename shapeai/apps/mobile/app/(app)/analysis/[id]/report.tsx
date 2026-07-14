@@ -372,59 +372,31 @@ function ImageViewerModal({ visible, imageUrl, onClose }: { visible: boolean; im
   )
 }
 
-function FutureEvolutionCard({ imageUrl, isPro }: { imageUrl: string; isPro: boolean }) {
+function FutureEvolutionCard({ imageUrl }: { imageUrl: string }) {
   const [modalVisible, setModalVisible] = useState(false)
+  const imageSource = { uri: imageUrl }
 
   return (
     <View style={fes.card}>
       <TouchableOpacity
         style={fes.imageWrapper}
-        onPress={() => isPro && setModalVisible(true)}
-        activeOpacity={isPro ? 0.85 : 1}
+        onPress={() => setModalVisible(true)}
+        activeOpacity={0.85}
       >
         <Image
-          source={{ uri: imageUrl }}
+          source={imageSource}
           style={fes.image}
-          blurRadius={isPro ? 0 : 30}
           resizeMode="cover"
         />
-        {isPro && (
-          <>
-            <LinearGradient
-              colors={['transparent', 'rgba(0,0,0,0.88)']}
-              style={fes.gradient}
-            >
-              <Text style={fes.gradientTag}>EVOLUÇÃO EM 12 SEMANAS</Text>
-              <Text style={fes.gradientSub}>Com consistência, este é seu potencial real</Text>
-            </LinearGradient>
-            <View style={fes.expandBtn}>
-              <Text style={fes.expandBtnText}>⤢</Text>
-            </View>
-          </>
-        )}
-        {!isPro && (
-          <View style={fes.lockOverlay}>
-            <Text style={fes.lockIcon}>✨</Text>
-            <Text style={fes.lockTitle}>Evolução em 12 Semanas</Text>
-            <Text style={fes.lockSub}>Veja como você pode ficar com treino e alimentação consistentes</Text>
-            <TouchableOpacity style={fes.upgradeBtn} onPress={() => router.push('/(app)/paywall')}>
-              <Text style={fes.upgradeBtnText}>Revelar agora</Text>
-            </TouchableOpacity>
-          </View>
-        )}
       </TouchableOpacity>
-      {isPro && (
-        <>
-          <Text style={fes.disclaimer}>
-            Gerado por IA com base na sua análise. Resultados reais dependem de consistência, alimentação e genética.
-          </Text>
-          <ImageViewerModal
-            visible={modalVisible}
-            imageUrl={imageUrl}
-            onClose={() => setModalVisible(false)}
-          />
-        </>
-      )}
+      <Text style={fes.disclaimer}>
+        Gerado por IA com base na sua análise. Resultados reais dependem de consistência, alimentação e genética.
+      </Text>
+      <ImageViewerModal
+        visible={modalVisible}
+        imageUrl={imageUrl}
+        onClose={() => setModalVisible(false)}
+      />
     </View>
   )
 }
@@ -437,7 +409,6 @@ export default function ReportScreen() {
   const [error, setError] = useState<string | null>(null)
   const [currentPage, setCurrentPage] = useState(0)
   const pagerRef = useRef<ScrollView>(null)
-  const isPro = true
 
   useEffect(() => {
     if (!id) return
@@ -503,11 +474,11 @@ export default function ReportScreen() {
           {bc?.overall_assessment ? <AssessmentCard text={bc.overall_assessment} /> : null}
           {bc ? <CompactBodyComp data={bc} /> : null}
           {analysis.future_self_url ? (
-            <FutureEvolutionCard imageUrl={analysis.future_self_url} isPro={isPro} />
+            <FutureEvolutionCard imageUrl={analysis.future_self_url} />
           ) : null}
           <TouchableOpacity
             style={s.workoutButton}
-            onPress={() => router.push(`/(app)/analysis/${id}/workout`)}
+            onPress={() => router.push('/(app)/treino')}
           >
             <Text style={s.workoutButtonText}>Ver Plano de Treino</Text>
             <Text style={s.workoutButtonArrow}>→</Text>

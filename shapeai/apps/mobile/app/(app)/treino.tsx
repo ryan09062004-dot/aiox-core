@@ -197,6 +197,8 @@ export default function TreinoTab() {
         </Pressable>
       </Modal>
 
+      {/* O header rola junto com o conteúdo — fica dentro do ScrollView, não fixo no topo. */}
+      <ScrollView style={styles.daysScroll} contentContainerStyle={styles.daysContent}>
       <View style={[styles.headerCard, { paddingTop: insets.top + 16 }]}>
         {/* TEMP: seletor "Mais recente" ocultado temporariamente (SHOW_ANALYSIS_PICKER=false) */}
         {SHOW_ANALYSIS_PICKER && completedAnalyses.length > 1 && (
@@ -263,7 +265,6 @@ export default function TreinoTab() {
         </TouchableOpacity>
       </View>
 
-      <ScrollView style={styles.daysScroll} contentContainerStyle={styles.daysContent}>
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}

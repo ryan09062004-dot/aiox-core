@@ -33,10 +33,9 @@ describe('generateIntentToken', () => {
 })
 
 describe('isPlanId', () => {
-  it('aceita apenas os planos conhecidos', () => {
+  it('aceita apenas o plano mensal', () => {
     expect(isPlanId('monthly')).toBe(true)
-    expect(isPlanId('annual')).toBe(true)
-    expect(isPlanId('lifetime')).toBe(false)
+    expect(isPlanId('annual')).toBe(false)
     expect(isPlanId(undefined)).toBe(false)
   })
 })
@@ -44,22 +43,24 @@ describe('isPlanId', () => {
 describe('buildCheckoutUrl', () => {
   const OLD_ENV = process.env
 
-  beforeEach(() => {
-    process.env = { ...OLD_ENV, CAKTO_CHECKOUT_URL_MONTHLY: 'https://pay.cakto.com.br/abc123' }
-  })
   afterEach(() => {
     process.env = OLD_ENV
   })
 
   it('embute o token em src e sck e pré-preenche o e-mail', () => {
+    process.env = { ...OLD_ENV, CAKTO_CHECKOUT_URL_MONTHLY: 'https://pay.cakto.com.br/abc123' }
     const url = new URL(buildCheckoutUrl('monthly', TOKEN, 'user@shape.ai')!)
     expect(url.searchParams.get('src')).toBe(TOKEN)
     expect(url.searchParams.get('sck')).toBe(TOKEN)
     expect(url.searchParams.get('email')).toBe('user@shape.ai')
   })
 
-  it('retorna null quando a oferta do plano não está configurada', () => {
-    expect(buildCheckoutUrl('annual', TOKEN, 'user@shape.ai')).toBeNull()
+  // Sem env configurada, cai na oferta padrão — o checkout funciona sem config extra.
+  it('usa a oferta padrão da Cakto quando não há env', () => {
+    process.env = { ...OLD_ENV, CAKTO_CHECKOUT_URL_MONTHLY: undefined }
+    const url = new URL(buildCheckoutUrl('monthly', TOKEN, 'user@shape.ai')!)
+    expect(url.origin + url.pathname).toBe('https://pay.cakto.com.br/j73s7m2_940797')
+    expect(url.searchParams.get('src')).toBe(TOKEN)
   })
 })
 
@@ -107,22 +108,22 @@ describe('resolveExpiresAt', () => {
     expect(at).toBe('2026-09-01T00:00:00.000Z')
   })
 
-  it('cai para a duração do plano quando a Cakto não informa data', () => {
-    const at = new Date(resolveExpiresAt({ data: {} }, 'annual')).getTime()
-    const expected = Date.now() + 365 * 24 * 60 * 60 * 1000
+  it('cai para 30 dias quando a Cakto não informa data', () => {
+    const at = new Date(resolveExpiresAt({ data: {} }, 'monthly')).getTime()
+    const expected = Date.now() + 30 * 24 * 60 * 60 * 1000
     expect(Math.abs(at - expected)).toBeLessThan(5000)
   })
 })
 
 describe('resolvePaymentOwner', () => {
   it('vincula pelo token mesmo quando o e-mail da compra é diferente do cadastro', async () => {
-    const pool = mockPool({ rows: [{ user_id: 'user-1', plan: 'annual' }] })
+    const pool = mockPool({ rows: [{ user_id: 'user-1', plan: 'monthly' }] })
 
     const owner = await resolvePaymentOwner(pool, {
       data: { src: TOKEN, customer: { email: 'outro-email@gmail.com' } },
     })
 
-    expect(owner).toEqual({ userId: 'user-1', plan: 'annual' })
+    expect(owner).toEqual({ userId: 'user-1', plan: 'monthly' })
     // Resolvido pelo token: não deve nem consultar por e-mail.
     expect(pool.query).toHaveBeenCalledTimes(1)
   })

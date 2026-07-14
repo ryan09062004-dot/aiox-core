@@ -341,7 +341,7 @@ export default function HomeScreen() {
           router.push((skip === 'true' ? '/(app)/camera' : '/(app)/photo-tip') as never)
         }} activeOpacity={0.85}>
           <LinearGradient
-            colors={['#00FF85', '#00FF85', '#2E7D32']}
+            colors={['#4CAF50', '#4CAF50', '#2E7D32']}
             locations={[0, 0.45, 1]}
             start={{ x: 0, y: 0 }}
             end={{ x: 0, y: 1 }}
@@ -358,8 +358,8 @@ export default function HomeScreen() {
                 />
               </Animated.View>
             </View>
-            <Ionicons name="scan" size={18} color="#0A0A0A" />
-            <Text style={[styles.evalBtnText, { color: '#0A0A0A' }]}>{hasAnalysis ? 'Nova Avaliação' : 'Começar Agora'}</Text>
+            <Ionicons name="scan" size={18} color="#FFFFFF" />
+            <Text style={[styles.evalBtnText, { color: '#FFFFFF' }]}>{hasAnalysis ? 'Nova Avaliação' : 'Começar Agora'}</Text>
           </LinearGradient>
         </TouchableOpacity>
       </View>
@@ -425,7 +425,7 @@ export default function HomeScreen() {
       {todayWorkout !== null && todayWorkout?.kind === 'session' && (
         <TouchableOpacity
           style={styles.planCard}
-          onPress={() => router.push(`/(app)/analysis/${todayWorkout.analysisId}/workout`)}
+          onPress={() => router.push('/(app)/treino')}
           activeOpacity={0.85}
         >
           <View style={styles.planBody}>
@@ -443,7 +443,7 @@ export default function HomeScreen() {
           </View>
 
           <View style={styles.planFooterRow}>
-            <TouchableOpacity style={{ flex: 1, marginRight: 8 }} onPress={() => router.push(`/(app)/analysis/${todayWorkout.analysisId}/workout`)}>
+            <TouchableOpacity style={{ flex: 1, marginRight: 8 }} onPress={() => router.push('/(app)/treino')}>
               <Text style={styles.planLink} numberOfLines={1}>
                 +{todayWorkout.session.exercises.length} exercícios · Ver plano completo
               </Text>
