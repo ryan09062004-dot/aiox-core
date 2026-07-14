@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert } from 'react-native'
+import { View, Text, TextInput, TouchableOpacity, StyleSheet } from 'react-native'
 import { router } from 'expo-router'
 import { supabase } from '../../src/services/supabase.client'
 
@@ -7,21 +7,24 @@ export default function ForgotPasswordScreen() {
   const [email, setEmail] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [sent, setSent] = useState(false)
+  // Alert.alert não renderiza no React Native Web — o feedback fica na própria tela.
+  const [error, setError] = useState<string | null>(null)
 
   const handleSend = async () => {
     if (!email) {
-      Alert.alert('Atenção', 'Informe seu email.')
+      setError('Informe seu e-mail.')
       return
     }
 
+    setError(null)
     setIsLoading(true)
-    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+    const { error: sendError } = await supabase.auth.resetPasswordForEmail(email, {
       redirectTo: 'shapeai://auth/reset-password',
     })
     setIsLoading(false)
 
-    if (error) {
-      Alert.alert('Erro', 'Não foi possível enviar o email. Tente novamente.')
+    if (sendError) {
+      setError('Não foi possível enviar o e-mail. Tente novamente.')
       return
     }
 
@@ -61,6 +64,8 @@ export default function ForgotPasswordScreen() {
         autoCorrect={false}
       />
 
+      {error && <Text style={styles.errorText}>{error}</Text>}
+
       <TouchableOpacity style={styles.button} onPress={handleSend} disabled={isLoading}>
         <Text style={styles.buttonText}>
           {isLoading ? 'Enviando...' : 'Enviar link de recuperação'}
@@ -87,6 +92,7 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     fontSize: 16,
   },
+  errorText: { color: '#E57373', fontSize: 13, textAlign: 'center', marginBottom: 12, lineHeight: 19 },
   button: {
     backgroundColor: '#4CAF50',
     borderRadius: 12,

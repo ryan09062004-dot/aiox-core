@@ -18,9 +18,7 @@ import { useSubscription } from '../../src/hooks/useSubscription'
 import { PHOTO_TIP_STORAGE_KEY } from './photo-tip'
 import { STANDARD_HOME_PLAN } from '../../src/data/home-workout'
 
-// TEMP: seletor de avaliação ("Mais recente") ocultado temporariamente.
-// Voltar para true quando for reexibir o seletor na aba Treino.
-const SHOW_ANALYSIS_PICKER = false
+const SHOW_ANALYSIS_PICKER = true
 
 function storageKey(id: string) { return `workout_progress_${id}` }
 function modeKey(id: string) { return `workout_mode_${id}` }
@@ -159,9 +157,13 @@ export default function TreinoTab() {
   const currentWeek = weeks[selectedWeek]
   const displaySessions = applyWorkoutMode(currentWeek?.sessions ?? [], workoutMode)
 
-  // A semana 1 fica aberta: mostrar o treino real é o que faz a pessoa querer o resto.
-  // A progressão (semanas 2+) é o que ela compra.
+  // Semanas 2+ são fechadas. Na semana 1, o usuário free vê apenas os três primeiros
+  // treinos (segunda, terça e quarta) — o suficiente para provar que o plano é real.
   const isWeekLocked = (index: number) => !isPro && index > 0
+  const FREE_SESSIONS_IN_WEEK_1 = 3
+  const freeSessionCount =
+    isPro || selectedWeek > 0 ? displaySessions.length : FREE_SESSIONS_IN_WEEK_1
+  const lockedSessions = displaySessions.slice(freeSessionCount)
   const goalLabel = goal ? GOAL_LABEL[goal] : '—'
   const sessionsPerWeek = weeks[0]?.sessions.length ?? 0
   const totalSessions = weeks.reduce((s, w) => s + w.sessions.length, 0)
@@ -200,7 +202,6 @@ export default function TreinoTab() {
       {/* O header rola junto com o conteúdo — fica dentro do ScrollView, não fixo no topo. */}
       <ScrollView style={styles.daysScroll} contentContainerStyle={styles.daysContent}>
       <View style={[styles.headerCard, { paddingTop: insets.top + 16 }]}>
-        {/* TEMP: seletor "Mais recente" ocultado temporariamente (SHOW_ANALYSIS_PICKER=false) */}
         {SHOW_ANALYSIS_PICKER && completedAnalyses.length > 1 && (
           <View style={styles.pickerRow}>
             <TouchableOpacity style={styles.pickerTrigger} onPress={() => setShowPicker(true)}>
@@ -305,15 +306,35 @@ export default function TreinoTab() {
               ))}
             </LockedSection>
           ) : (
-            displaySessions.map((session, i) => (
-              <WorkoutDayCard
-                key={i}
-                session={session}
-                isCompleted={completed.has(sessionKey(currentWeek.week_number, session.day))}
-                onToggle={() => toggleSession(currentWeek.week_number, session.day)}
-                onShare={() => setShareTarget({ session, weekNumber: currentWeek.week_number })}
-              />
-            ))
+            <>
+              {displaySessions.slice(0, freeSessionCount).map((session, i) => (
+                <WorkoutDayCard
+                  key={i}
+                  session={session}
+                  isCompleted={completed.has(sessionKey(currentWeek.week_number, session.day))}
+                  onToggle={() => toggleSession(currentWeek.week_number, session.day)}
+                  onShare={() => setShareTarget({ session, weekNumber: currentWeek.week_number })}
+                />
+              ))}
+
+              {lockedSessions.length > 0 && (
+                <LockedSection
+                  title={`Mais ${lockedSessions.length} treinos nesta semana`}
+                  description="Você tem os três primeiros dias. O restante da semana e as semanas seguintes vêm no plano completo."
+                  cta="Desbloquear meu plano"
+                >
+                  {lockedSessions.slice(0, 2).map((session, i) => (
+                    <WorkoutDayCard
+                      key={i}
+                      session={session}
+                      isCompleted={false}
+                      onToggle={() => {}}
+                      onShare={() => {}}
+                    />
+                  ))}
+                </LockedSection>
+              )}
+            </>
           )}
         </View>
       </ScrollView>

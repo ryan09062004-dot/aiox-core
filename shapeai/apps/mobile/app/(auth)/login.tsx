@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, Platform, Image } from 'react-native'
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, Platform, Image } from 'react-native'
 import { router } from 'expo-router'
 import * as WebBrowser from 'expo-web-browser'
 import * as AuthSession from 'expo-auth-session'
@@ -32,27 +32,40 @@ export default function LoginScreen() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [oauthLoading, setOauthLoading] = useState(false)
-  const { signIn, isLoading, setGuestMode } = useAuthStore()
-
-  const handleGuestMode = () => {
-    setGuestMode(true)
-    router.replace('/(app)')
-  }
+  // Alert.alert não renderiza no React Native Web — no PWA o erro de login ficava
+  // invisível e a pessoa não entendia por que não entrava.
+  const [error, setError] = useState<string | null>(null)
+  const { signIn, isLoading } = useAuthStore()
 
   const handleLogin = async () => {
     if (!email || !password) {
-      Alert.alert('Atenção', 'Preencha email e senha.')
+      setError('Preencha e-mail e senha.')
       return
     }
-    const error = await signIn(email, password)
-    if (error) Alert.alert('Erro ao entrar', error)
+    setError(null)
+    const err = await signIn(email, password)
+    if (err) setError(err)
   }
 
   const handleGoogleSignIn = async () => {
     setOauthLoading(true)
     try {
+      // Web (PWA): redirect de página inteira. O popup (openAuthSessionAsync)
+      // trava no navegador por causa de COOP/window.closed — usamos o fluxo
+      // nativo do Supabase que navega o browser e volta em /auth-callback?code=.
+      if (Platform.OS === 'web') {
+        const redirectTo = `${window.location.origin}/auth-callback`
+        const { error } = await supabase.auth.signInWithOAuth({
+          provider: 'google',
+          options: { redirectTo },
+        })
+        if (error) throw error
+        return // o navegador redireciona; auth-callback.tsx conclui o login
+      }
+
+      // Nativo (iOS/Android): popup via WebBrowser + troca manual do código.
       const redirectTo = AuthSession.makeRedirectUri({ scheme: 'shapeai', path: 'auth-callback' })
-const { data, error } = await supabase.auth.signInWithOAuth({
+      const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: { redirectTo, skipBrowserRedirect: true },
       })
@@ -69,7 +82,7 @@ const { data, error } = await supabase.auth.signInWithOAuth({
         }
       }
     } catch {
-      Alert.alert('Erro', 'Não foi possível entrar com Google.')
+      setError('Não foi possível entrar com Google.')
     } finally {
       setOauthLoading(false)
     }
@@ -93,7 +106,7 @@ const { data, error } = await supabase.auth.signInWithOAuth({
     } catch (err: unknown) {
       const e = err as { code?: string }
       if (e.code !== 'ERR_REQUEST_CANCELED') {
-        Alert.alert('Erro', 'Não foi possível entrar com Apple.')
+        setError('Não foi possível entrar com Apple.')
       }
     }
   }
@@ -135,6 +148,8 @@ const { data, error } = await supabase.auth.signInWithOAuth({
         <Text style={styles.forgotText}>Esqueci minha senha</Text>
       </TouchableOpacity>
 
+      {error && <Text style={styles.errorText}>{error}</Text>}
+
       <TouchableOpacity style={styles.button} onPress={handleLogin} disabled={busy}>
         <Text style={styles.buttonText}>{isLoading ? 'Entrando...' : 'Entrar'}</Text>
       </TouchableOpacity>
@@ -166,10 +181,6 @@ const { data, error } = await supabase.auth.signInWithOAuth({
       >
         <Text style={styles.signUpText}>Não tem conta? <Text style={styles.signUpLink}>Criar conta</Text></Text>
       </TouchableOpacity>
-
-      <TouchableOpacity style={styles.guestContainer} onPress={handleGuestMode}>
-        <Text style={styles.guestText}>Explorar sem conta</Text>
-      </TouchableOpacity>
     </View>
   )
 }
@@ -188,6 +199,7 @@ const styles = StyleSheet.create({
   },
   forgotContainer: { alignItems: 'flex-end', marginBottom: 16 },
   forgotText: { color: '#4CAF50', fontSize: 14 },
+  errorText: { color: '#E57373', fontSize: 13, textAlign: 'center', marginBottom: 12, lineHeight: 19 },
   button: { backgroundColor: '#4CAF50', borderRadius: 12, padding: 16, alignItems: 'center' },
   buttonText: { color: '#fff', fontSize: 16, fontWeight: '600' },
   dividerRow: { flexDirection: 'row', alignItems: 'center', marginVertical: 24 },
@@ -210,6 +222,4 @@ const styles = StyleSheet.create({
   signUpContainer: { marginTop: 24, alignItems: 'center' },
   signUpText: { color: '#888', fontSize: 15 },
   signUpLink: { color: '#4CAF50', fontWeight: '600' },
-  guestContainer: { marginTop: 4, alignItems: 'center', padding: 12 },
-  guestText: { color: '#333', fontSize: 13 },
 })
