@@ -21,13 +21,18 @@ interface RevenueCatEvent {
 }
 
 // Eventos da Cakto que concedem ou revogam acesso. Os demais (initiate_checkout,
-// purchase_refused, pix_gerado) não alteram o status da assinatura.
-const CAKTO_GRANT_EVENTS = new Set(['purchase_approved', 'subscription_renewed'])
+// checkout_abandonment, purchase_refused, pix_gerado, boleto_gerado) não alteram o
+// status da assinatura.
+const CAKTO_GRANT_EVENTS = new Set([
+  'purchase_approved',
+  'subscription_created',
+  'subscription_renewed',
+])
 const CAKTO_REVOKE_EVENTS = new Set([
   'refund',
   'chargeback',
   'subscription_canceled',
-  'subscription_expired',
+  'subscription_renewal_refused',
 ])
 
 export async function subscriptionRoutes(app: FastifyInstance) {
