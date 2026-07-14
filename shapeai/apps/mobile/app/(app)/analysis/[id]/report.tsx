@@ -464,8 +464,8 @@ export default function ReportScreen() {
         {/* Aba 1 — Resultado */}
         <ScrollView style={{ width: SCREEN_W }} contentContainerStyle={s.tabContent}>
           <HeroCard score={overallScore} date={analysis.completed_at} />
-          {bc?.overall_assessment ? <AssessmentCard text={bc.overall_assessment} /> : null}
           {bc ? <CompactBodyComp data={bc} /> : null}
+          {bc?.overall_assessment ? <AssessmentCard text={bc.overall_assessment} /> : null}
           {analysis.future_self_url ? (
             <FutureEvolutionCard imageUrl={analysis.future_self_url} />
           ) : null}
@@ -474,7 +474,7 @@ export default function ReportScreen() {
             style={s.workoutButton}
             onPress={() => router.push('/(app)/treino')}
           >
-            <Text style={s.workoutButtonText}>Ver Plano de Treino</Text>
+            <Text style={s.workoutButtonText}>Ver Plano Personalizado</Text>
             <Text style={s.workoutButtonArrow}>→</Text>
           </TouchableOpacity>
         </ScrollView>

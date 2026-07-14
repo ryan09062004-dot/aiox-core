@@ -22,7 +22,7 @@ import { PHOTO_TIP_STORAGE_KEY } from './photo-tip'
 
 // TEMP: rodapé "Ver detalhes · N opções" dos cards de refeição ocultado temporariamente.
 // Voltar para true quando for reexibir.
-const SHOW_MEAL_DETAILS_FOOTER = false
+const SHOW_MEAL_DETAILS_FOOTER = true
 
 const MEAL_ICONS: Record<string, string> = {
   'Café da Manhã': '☀️',
@@ -74,11 +74,12 @@ function MealCard({ meal }: { meal: MealItem }) {
           <MacroChip label="Gordura" value={current.fats_g} unit="g" />
         </View>
 
-        {/* TEMP: "Ver detalhes · N opções" ocultado temporariamente (SHOW_MEAL_DETAILS_FOOTER=false) */}
+        {/* Sem esse rodapé, nada indicava que o card era clicável e que havia outras
+            opções de refeição atrás dele. */}
         {SHOW_MEAL_DETAILS_FOOTER && (
           <View style={styles.cardFooter}>
             <Text style={styles.cardFooterText}>
-              {hasAlts ? `Ver detalhes · ${allOptions.length} opções` : 'Ver detalhes'}
+              {hasAlts ? `Ver ${allOptions.length} opções de refeição` : 'Ver detalhes'}
             </Text>
             <Ionicons name="chevron-forward" size={13} color="#4CAF50" />
           </View>
