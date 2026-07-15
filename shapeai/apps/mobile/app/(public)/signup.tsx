@@ -196,10 +196,6 @@ export default function FunnelSignupScreen() {
           <GoogleIcon />
           <Text style={styles.googleButtonText}>Continuar com Google</Text>
         </TouchableOpacity>
-
-        <TouchableOpacity style={styles.linkRow} onPress={() => router.push('/(auth)/login')}>
-          <Text style={styles.linkText}>Já tenho conta</Text>
-        </TouchableOpacity>
       </ScrollView>
     </KeyboardAvoidingView>
   )
@@ -272,8 +268,6 @@ const styles = StyleSheet.create({
   },
   googleButtonText: { color: '#fff', fontSize: 15, fontWeight: '600' },
 
-  linkRow: { alignItems: 'center', padding: 12 },
-  linkText: { color: '#888', fontSize: 14 },
 
   recoverContainer: {
     flex: 1,
