@@ -284,15 +284,12 @@ def _build_prompt_v2(sex: str) -> str:
     """
     return (
         "Transforme a foto desta pessoa mostrando um corpo atlético, definido e "
-        "esteticamente trabalhado — sem gordura excessiva e com musculatura bem desenvolvida "
-        "em peito, ombros, costas, braços e abdômen, em um nível atlético, não de fisiculturista.\n\n"
+        "esteticamente bonito — em um nível atlético.\n\n"
         "Mantenha a identidade da pessoa, o mesmo rosto, o mesmo tom de pele, a mesma roupa e o "
-        "mesmo cenário/ambiente da foto original (mesma iluminação, fundo e local).\n\n"
-        "A transformação deve afetar apenas a composição corporal (redução de gordura e definição "
-        "muscular equilibrada), preservando pose, enquadramento e todas as demais características da "
-        "imagem original.\n\n"
-        "O resultado deve ser fotorrealista e natural, como uma evolução física real da mesma pessoa, "
-        "e não uma pessoa diferente."
+        "mesmo cenário/ambiente da foto original.\n\n"
+        "A transformação deve afetar apenas a composição corporal, preservando pose, enquadramento "
+        "e todas as demais características da imagem original.\n\n"
+        "O resultado deve ser fotorrealista e natural, como uma evolução física da mesma pessoa."
     )
 
 
