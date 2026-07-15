@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback, useRef } from 'react'
 import {
   View, Text, StyleSheet, TouchableOpacity,
-  Image, ScrollView, Share, Animated, Easing,
+  Image, ScrollView, Share, Animated, Easing, ActivityIndicator, Platform, Linking,
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { LinearGradient } from 'expo-linear-gradient'
@@ -15,6 +15,8 @@ import { WorkoutShareCard } from '../../src/components/workout/WorkoutShareCard'
 import { getUserProfile } from '../../src/services/profile.service'
 import { listAnalyses, getAnalysisResult } from '../../src/services/analysis.service'
 import { getScoreColor } from '@shapeai/shared'
+import { useSubscription } from '../../src/hooks/useSubscription'
+import { createCheckout } from '../../src/services/subscription.service'
 import type { AnalysisSummary, WorkoutSession, PrimaryGoal } from '@shapeai/shared'
 
 // ─── Frases motivacionais ─────────────────────────────────────────────────────
@@ -142,6 +144,7 @@ function Ring({ pct, size = 56 }: { pct: number; size?: number }) {
 
 export default function HomeScreen() {
   const insets = useSafeAreaInsets()
+  const { isPro } = useSubscription()
   const { session, isGuest } = useAuthStore()
   const [goal, setGoal] = useState<PrimaryGoal | null>(null)
   const [weight, setWeight] = useState<number | null>(null)
@@ -153,7 +156,10 @@ export default function HomeScreen() {
   const [shareVisible, setShareVisible] = useState(false)
   const [planTotalWeeks, setPlanTotalWeeks] = useState(4)
   const [weekProgress, setWeekProgress] = useState<{ day: string; done: boolean; isToday: boolean }[]>([])
+  const [showSubSheet, setShowSubSheet] = useState(false)
+  const [checkoutLoading, setCheckoutLoading] = useState(false)
   const sweepAnim = useRef(new Animated.Value(-160)).current
+  const sheetY = useRef(new Animated.Value(500)).current
 
   useEffect(() => {
     Animated.loop(
@@ -262,6 +268,35 @@ export default function HomeScreen() {
   const fat = lastAnalysis?.scores?.body_fat_estimate_pct ?? null
   const hasAnalysis = lastAnalysis != null && lastAnalysis !== undefined
 
+  // Aba de assinatura: sobe alguns segundos após entrar na Home, só para usuário free.
+  useFocusEffect(useCallback(() => {
+    if (isPro) return
+    const t = setTimeout(() => setShowSubSheet(true), 3500)
+    return () => { clearTimeout(t); setShowSubSheet(false) }
+  }, [isPro]))
+
+  useEffect(() => {
+    Animated.timing(sheetY, {
+      toValue: showSubSheet ? 0 : 500,
+      duration: 320,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: true,
+    }).start()
+  }, [showSubSheet])
+
+  const handleSubscribe = async () => {
+    setCheckoutLoading(true)
+    try {
+      const url = await createCheckout('monthly')
+      if (Platform.OS === 'web') window.location.assign(url)
+      else await Linking.openURL(url)
+    } catch {
+      // silencioso — a pessoa ainda pode assinar pelo paywall
+    } finally {
+      setCheckoutLoading(false)
+    }
+  }
+
   return (
     <View style={styles.root}>
       <ScrollView
@@ -275,8 +310,10 @@ export default function HomeScreen() {
         <View style={{ flex: 1 }}>
           <View style={styles.topGreetingRow}>
             <Text style={styles.topGreeting}>Olá, {name}!</Text>
-            <View style={styles.topPro}>
-              <Text style={styles.topProText}>PRO</Text>
+            <View style={[styles.topPro, !isPro && styles.topFree]}>
+              <Text style={[styles.topProText, !isPro && styles.topFreeText]}>
+                {isPro ? 'PRO' : 'FREE'}
+              </Text>
             </View>
           </View>
           <Text style={styles.topDate}>{todayFullDate()}</Text>
@@ -286,7 +323,13 @@ export default function HomeScreen() {
         </TouchableOpacity>
       </View>
 
-      {hasAnalysis ? (
+      {lastAnalysis === undefined ? (
+        // Ainda carregando: mostra só um spinner — evita o flash da tela "sem análise"
+        // (que agora só aparece quando confirmamos que não há nenhuma).
+        <View style={styles.homeLoading}>
+          <ActivityIndicator color="#4CAF50" size="large" />
+        </View>
+      ) : hasAnalysis ? (
         // ── HOME DE USO DIÁRIO — estilo painel de progresso ──
         (() => {
           const doneWeek = weekProgress.filter((d) => d.done).length
@@ -434,6 +477,8 @@ export default function HomeScreen() {
             </TouchableOpacity>
           </View>
 
+          <DailyQuoteCard />
+
           {todayWorkout?.kind === 'session' && (
             <WorkoutShareCard
               visible={shareVisible}
@@ -503,8 +548,6 @@ export default function HomeScreen() {
           </TouchableOpacity>
         </>
       )}
-
-      <DailyQuoteCard />
     </ScrollView>
 
       {/* ── Botão flutuante do Personal (chat) ── */}
@@ -515,6 +558,49 @@ export default function HomeScreen() {
       >
         <Ionicons name="chatbubble-ellipses" size={24} color="#0A0A0A" />
       </TouchableOpacity>
+
+      {/* ── Aba de assinatura (usuário free) ── */}
+      {showSubSheet && (
+        <Animated.View
+          style={[styles.subSheet, { paddingBottom: insets.bottom + 20, transform: [{ translateY: sheetY }] }]}
+        >
+          <TouchableOpacity style={styles.subClose} onPress={() => setShowSubSheet(false)}>
+            <Ionicons name="close" size={22} color="#777" />
+          </TouchableOpacity>
+
+          <Text style={styles.subTitle}>Desbloqueie o ShapeAI completo</Text>
+          <Text style={styles.subSub}>Tudo o que você precisa para chegar ao seu objetivo.</Text>
+
+          <View style={styles.subBenefits}>
+            {[
+              'Plano de treino completo',
+              'Plano alimentar liberado',
+              'Feedback e avaliações ilimitadas',
+              'Conversas sem limite com o Personal',
+            ].map((b) => (
+              <View key={b} style={styles.subBenefitRow}>
+                <Ionicons name="checkmark-circle" size={18} color="#4CAF50" />
+                <Text style={styles.subBenefitText}>{b}</Text>
+              </View>
+            ))}
+          </View>
+
+          <TouchableOpacity
+            style={[styles.subCta, checkoutLoading && { opacity: 0.6 }]}
+            onPress={handleSubscribe}
+            disabled={checkoutLoading}
+            activeOpacity={0.85}
+          >
+            {checkoutLoading
+              ? <ActivityIndicator color="#0A0A0A" />
+              : <Text style={styles.subCtaText}>Assinar por R$ 29,90/mês</Text>}
+          </TouchableOpacity>
+
+          <TouchableOpacity onPress={() => setShowSubSheet(false)} style={styles.subDismiss}>
+            <Text style={styles.subDismissText}>Agora não</Text>
+          </TouchableOpacity>
+        </Animated.View>
+      )}
 
     </View>
   )
@@ -555,6 +641,40 @@ const styles = StyleSheet.create({
   firstStepItem: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   firstStepText: { color: '#888', fontSize: 13 },
 
+  homeLoading: { paddingTop: 80, alignItems: 'center' },
+
+  // Aba de assinatura
+  subSheet: {
+    position: 'absolute',
+    left: 0, right: 0, bottom: 0,
+    backgroundColor: '#141414',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    borderTopWidth: 1,
+    borderColor: '#2A2A2A',
+    paddingHorizontal: 24,
+    paddingTop: 26,
+    gap: 8,
+    shadowColor: '#000', shadowOpacity: 0.5, shadowRadius: 16, shadowOffset: { width: 0, height: -4 },
+    elevation: 12,
+  },
+  subClose: { position: 'absolute', top: 14, right: 16, padding: 4, zIndex: 1 },
+  subTitle: { color: '#fff', fontSize: 20, fontWeight: '800' },
+  subSub: { color: '#888', fontSize: 14, marginBottom: 8 },
+  subBenefits: { gap: 10, marginBottom: 8 },
+  subBenefitRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  subBenefitText: { color: '#ddd', fontSize: 14, flex: 1 },
+  subCta: {
+    backgroundColor: '#4CAF50',
+    borderRadius: 14,
+    paddingVertical: 16,
+    alignItems: 'center',
+    marginTop: 6,
+  },
+  subCtaText: { color: '#0A0A0A', fontSize: 16, fontWeight: '800' },
+  subDismiss: { alignItems: 'center', paddingVertical: 10 },
+  subDismissText: { color: '#666', fontSize: 13 },
+
   // Cabeçalho inline
   topBar: { flexDirection: 'row', alignItems: 'center', marginBottom: 4 },
   topGreetingRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
@@ -564,6 +684,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 9, paddingVertical: 3, borderRadius: 8,
   },
   topProText: { color: '#0A0A0A', fontSize: 11, fontWeight: '800', letterSpacing: 0.8 },
+  // Free: badge neutro e discreto — não compete com o verde do PRO.
+  topFree: { backgroundColor: '#1F1F1F', borderWidth: 1, borderColor: '#2E2E2E' },
+  topFreeText: { color: '#888' },
   topDate: { color: '#666', fontSize: 13, marginTop: 2 },
   gearCircle: {
     width: 40, height: 40, borderRadius: 20,

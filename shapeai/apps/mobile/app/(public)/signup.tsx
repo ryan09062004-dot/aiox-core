@@ -128,7 +128,7 @@ export default function FunnelSignupScreen() {
       <ScrollView contentContainerStyle={styles.body} keyboardShouldPersistTaps="handled">
         <View style={styles.badge}>
           <Ionicons name="checkmark-circle" size={16} color="#4CAF50" />
-          <Text style={styles.badgeText}>Estamos quase lá</Text>
+          <Text style={styles.badgeText}>Falta pouco</Text>
         </View>
 
         <Text style={styles.title}>Salve seu resultado</Text>

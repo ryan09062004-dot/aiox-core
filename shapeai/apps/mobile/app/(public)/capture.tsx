@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react'
-import { View, Text, StyleSheet, TouchableOpacity, Image } from 'react-native'
+import { View, Text, StyleSheet, TouchableOpacity, Image, ActivityIndicator } from 'react-native'
 import { CameraView, CameraType, useCameraPermissions } from 'expo-camera'
 import * as ImagePicker from 'expo-image-picker'
 import { Ionicons } from '@expo/vector-icons'
@@ -20,6 +20,7 @@ export default function CaptureScreen() {
   const [permission, requestPermission] = useCameraPermissions()
   const [screenState, setScreenState] = useState<ScreenState>('camera')
   const [previewUri, setPreviewUri] = useState<string | null>(null)
+  const [imgLoading, setImgLoading] = useState(false)
   const cameraRef = useRef<CameraView>(null)
 
   const goToSignup = (front: string) => {
@@ -46,8 +47,11 @@ export default function CaptureScreen() {
 
   const handleCapture = async () => {
     if (!cameraRef.current) return
-    const photo = await cameraRef.current.takePictureAsync({ quality: 0.8, base64: false })
+    // Qualidade menor = arquivo menor = preview e upload mais rápidos. A análise
+    // redimensiona no servidor, então 0.6 não tira nada útil.
+    const photo = await cameraRef.current.takePictureAsync({ quality: 0.6, base64: false })
     if (!photo) return
+    setImgLoading(true)
     setPreviewUri(photo.uri)
     setScreenState('preview')
   }
@@ -56,9 +60,10 @@ export default function CaptureScreen() {
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ['images'],
       allowsEditing: false,
-      quality: 0.9,
+      quality: 0.6,
     })
     if (result.canceled || !result.assets[0]) return
+    setImgLoading(true)
     setPreviewUri(result.assets[0].uri)
     setScreenState('preview')
   }
@@ -80,13 +85,29 @@ export default function CaptureScreen() {
         <View style={styles.topBar}>
           <Text style={styles.stepLabel}>{config.label}</Text>
         </View>
-        <Image source={{ uri: previewUri }} style={styles.preview} resizeMode="cover" />
+        <View style={styles.preview}>
+          <Image
+            source={{ uri: previewUri }}
+            style={StyleSheet.absoluteFill}
+            resizeMode="cover"
+            onLoadEnd={() => setImgLoading(false)}
+          />
+          {imgLoading && (
+            <View style={styles.previewLoading}>
+              <ActivityIndicator color="#4CAF50" size="large" />
+            </View>
+          )}
+        </View>
         <View style={styles.previewButtons}>
           <TouchableOpacity style={styles.retakeButton} onPress={handleRetake}>
             <Ionicons name="refresh" size={18} color="#fff" />
             <Text style={styles.retakeText}>Refazer</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.confirmButton} onPress={handleConfirm}>
+          <TouchableOpacity
+            style={[styles.confirmButton, imgLoading && { opacity: 0.5 }]}
+            onPress={handleConfirm}
+            disabled={imgLoading}
+          >
             <Text style={styles.confirmText}>Gerar minha análise</Text>
           </TouchableOpacity>
         </View>
@@ -200,7 +221,8 @@ const styles = StyleSheet.create({
 
   topBar: { paddingTop: 56, paddingBottom: 12, alignItems: 'center', backgroundColor: '#000' },
   stepLabel: { color: '#fff', fontSize: 17, fontWeight: '600' },
-  preview: { flex: 1, width: '100%' },
+  preview: { flex: 1, width: '100%', backgroundColor: '#000' },
+  previewLoading: { ...StyleSheet.absoluteFillObject, alignItems: 'center', justifyContent: 'center' },
   previewButtons: { flexDirection: 'row', padding: 20, gap: 12, backgroundColor: '#000' },
   retakeButton: {
     flex: 1,

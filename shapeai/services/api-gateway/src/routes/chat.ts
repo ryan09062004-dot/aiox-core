@@ -7,7 +7,7 @@ type Persona = 'rafael' | 'marina' | 'bruno'
 
 // Limite TOTAL (não diário): o usuário free tem 2 mensagens de amostra na vida.
 // A tabela chat_usage continua registrando por dia — o limite soma todos os dias.
-const FREE_MESSAGE_LIMIT = 2
+const FREE_MESSAGE_LIMIT = 1
 
 const PERSONA_SYSTEM_PROMPTS: Record<Persona, string> = {
   rafael: `Você é Rafael, personal trainer com 12 anos de experiência, especializado em musculação e composição corporal.

@@ -148,7 +148,7 @@ export default function CoachScreen() {
           />
           <View style={styles.headerText}>
             <Text style={styles.headerName}>{coachName}</Text>
-            <Text style={styles.headerSub}>Personal trainer virtual</Text>
+            <Text style={styles.headerSub}>Personal disponível</Text>
           </View>
           <TouchableOpacity onPress={() => router.push('/(app)/profile')} style={styles.settingsBtn}>
             <Ionicons name="settings-outline" size={20} color="#555" />
@@ -215,7 +215,7 @@ export default function CoachScreen() {
               <Ionicons name="lock-closed" size={16} color="#4CAF50" />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={styles.limitTitle}>Suas 2 mensagens gratuitas acabaram</Text>
+              <Text style={styles.limitTitle}>Sua mensagem gratuita acabou</Text>
               <Text style={styles.limitText}>
                 Converse sem limite com seu personal no plano completo.
               </Text>

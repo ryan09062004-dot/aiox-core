@@ -277,7 +277,7 @@ function MuscleRanking({ muscle_scores }: { muscle_scores: MuscleScores }) {
       </View>
       <View style={s.rankingDivider} />
       <View style={s.rankingCol}>
-        <Text style={[s.rankingTitle, { color: '#F44336' }]}>A trabalhar</Text>
+        <Text style={[s.rankingTitle, { color: '#F44336' }]}>Mais fracos</Text>
         {bottom3.map(({ key, score }) => (
           <View key={key} style={s.rankingRow}>
             <View style={[s.rankingDot, { backgroundColor: '#F44336' }]} />

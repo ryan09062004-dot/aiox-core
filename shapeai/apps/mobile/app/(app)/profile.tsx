@@ -9,15 +9,12 @@ import {
   ScrollView,
   TextInput,
   Modal,
-  Alert,
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { router } from 'expo-router'
+import AsyncStorage from '@react-native-async-storage/async-storage'
 import { useAuthStore } from '../../src/stores/auth.store'
-import { useSubscription } from '../../src/hooks/useSubscription'
 import { getUserProfile, updateUserProfile } from '../../src/services/profile.service'
 import { getReminderConfig, saveReminderConfig, type ReminderConfig } from '../../src/services/workout-reminder.service'
-import { apiPost } from '../../src/services/api.client'
 import type { UserProfile } from '@shapeai/shared'
 
 const GOAL_LABEL: Record<string, string> = {
@@ -34,25 +31,26 @@ const PERSONAS: Array<{
   {
     id: 'rafael',
     name: 'Rafael',
-    tagline: 'Nem mole nem pesado — só o que realmente funciona.',
+    tagline: 'Equilibrado e direto ao ponto.',
   },
   {
     id: 'marina',
     name: 'Marina',
-    tagline: 'Sem pressão, sem julgamento. Cada passo seu importa.',
+    tagline: 'Acolhedora e motivadora.',
   },
   {
     id: 'bruno',
     name: 'Bruno',
-    tagline: 'Não vim aqui pra ser seu amigo. Vim pra te transformar.',
+    tagline: 'Durão e sem desculpas.',
   },
 ]
 
 export default function ProfileScreen() {
   const insets = useSafeAreaInsets()
-  const { signOut } = useAuthStore()
-  const { subscription } = useSubscription()
-  const isPro = subscription?.status === 'pro'
+  const { signOut, session } = useAuthStore()
+  const [displayName, setDisplayName] = useState<string | null>(null)
+  const [editingName, setEditingName] = useState(false)
+  const [nameInput, setNameInput] = useState('')
 
   const [profile, setProfile] = useState<UserProfile | null>(null)
   const [selectedPersona, setSelectedPersona] = useState<'rafael' | 'marina' | 'bruno'>('rafael')
@@ -62,8 +60,6 @@ export default function ProfileScreen() {
   const [fieldInput, setFieldInput] = useState('')
   const [reminder, setReminder] = useState<ReminderConfig>({ enabled: false, hour: 18, minute: 0 })
   const [showTimePicker, setShowTimePicker] = useState(false)
-  const [inviteCode, setInviteCode] = useState('')
-  const [isRedeeming, setIsRedeeming] = useState(false)
 
   useEffect(() => {
     getUserProfile()
@@ -74,20 +70,23 @@ export default function ProfileScreen() {
       .catch(() => {})
       .finally(() => setIsLoading(false))
     getReminderConfig().then(setReminder).catch(() => {})
+    AsyncStorage.getItem('user_display_name').then((n) => { if (n) setDisplayName(n) })
   }, [])
 
-  const handleRedeemCode = async () => {
-    if (!inviteCode.trim()) return
-    setIsRedeeming(true)
-    try {
-      const res = await apiPost<{ message: string }>('/invite/redeem', { code: inviteCode.trim() })
-      Alert.alert('Sucesso!', res.message)
-      setInviteCode('')
-    } catch (e: unknown) {
-      Alert.alert('Erro', e instanceof Error ? e.message : 'Código inválido')
-    } finally {
-      setIsRedeeming(false)
+  const displayedName = displayName ?? session?.user?.email?.split('@')[0] ?? 'atleta'
+
+  const startEditName = () => {
+    setNameInput(displayName ?? '')
+    setEditingName(true)
+  }
+
+  const handleSaveName = async () => {
+    const trimmed = nameInput.trim()
+    if (trimmed) {
+      await AsyncStorage.setItem('user_display_name', trimmed)
+      setDisplayName(trimmed)
     }
+    setEditingName(false)
   }
 
   const handleReminderToggle = async (value: boolean) => {
@@ -162,17 +161,30 @@ export default function ProfileScreen() {
     <ScrollView style={styles.scroll} contentContainerStyle={[styles.container, { paddingTop: insets.top + 20 }]}>
       <Text style={styles.pageTitle}>Perfil</Text>
 
-      {/* Plano atual */}
-      <View style={styles.planCard}>
-        <View style={styles.planRow}>
-          <Text style={styles.planLabel}>Plano atual</Text>
-          <View style={[styles.badge, isPro ? styles.badgePro : styles.badgeFree]}>
-            <Text style={styles.badgeText}>{isPro ? 'Pro' : 'Free'}</Text>
+      {/* Nome */}
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Nome</Text>
+        {editingName ? (
+          <View style={styles.nameRow}>
+            <TextInput
+              style={styles.nameInput}
+              value={nameInput}
+              onChangeText={setNameInput}
+              placeholder="Seu nome"
+              placeholderTextColor="#444"
+              autoFocus
+              returnKeyType="done"
+              maxLength={24}
+              onSubmitEditing={handleSaveName}
+            />
+            <TouchableOpacity style={styles.nameSaveBtn} onPress={handleSaveName}>
+              <Text style={styles.nameSaveText}>Salvar</Text>
+            </TouchableOpacity>
           </View>
-        </View>
-        {!isPro && (
-          <TouchableOpacity style={styles.upgradeButton} onPress={() => router.push('/(app)/paywall')}>
-            <Text style={styles.upgradeText}>Fazer upgrade para Pro →</Text>
+        ) : (
+          <TouchableOpacity style={styles.nameRow} onPress={startEditName} activeOpacity={0.7}>
+            <Text style={styles.nameValue}>{displayedName}</Text>
+            <Text style={styles.nameEdit}>Alterar</Text>
           </TouchableOpacity>
         )}
       </View>
@@ -345,32 +357,6 @@ export default function ProfileScreen() {
         </View>
       </View>
 
-      {/* Código de convite — só para usuários free */}
-      {!isPro && (
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Código de Convite</Text>
-          <View style={styles.inviteRow}>
-            <TextInput
-              style={styles.inviteInput}
-              placeholder="Ex: SHAPE-XKQT7"
-              placeholderTextColor="#444"
-              value={inviteCode}
-              onChangeText={(t) => setInviteCode(t.toUpperCase())}
-              autoCapitalize="characters"
-              autoCorrect={false}
-              maxLength={12}
-            />
-            <TouchableOpacity
-              style={[styles.inviteBtn, isRedeeming && { opacity: 0.5 }]}
-              onPress={handleRedeemCode}
-              disabled={isRedeeming}
-            >
-              <Text style={styles.inviteBtnText}>{isRedeeming ? '...' : 'Ativar'}</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      )}
-
       {/* Sair */}
       <TouchableOpacity style={styles.signOutButton} onPress={signOut}>
         <Text style={styles.signOutText}>Sair da conta</Text>
@@ -452,17 +438,19 @@ const styles = StyleSheet.create({
   signOutButton: { marginTop: 16, alignItems: 'center', padding: 14 },
   signOutText: { color: '#555', fontSize: 15 },
 
-  inviteRow: { flexDirection: 'row', gap: 10 },
-  inviteInput: {
-    flex: 1, backgroundColor: '#111', borderRadius: 12,
-    padding: 14, color: '#fff', fontSize: 15,
-    borderWidth: 1, borderColor: '#222', letterSpacing: 1,
+  nameRow: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    backgroundColor: '#111', borderRadius: 12, padding: 14,
+    borderWidth: 1, borderColor: '#222', gap: 10,
   },
-  inviteBtn: {
-    backgroundColor: '#4CAF50', borderRadius: 12,
-    paddingHorizontal: 20, justifyContent: 'center', alignItems: 'center',
+  nameValue: { color: '#fff', fontSize: 16, fontWeight: '600' },
+  nameEdit: { color: '#4CAF50', fontSize: 14, fontWeight: '600' },
+  nameInput: { flex: 1, color: '#fff', fontSize: 16 },
+  nameSaveBtn: {
+    backgroundColor: '#4CAF50', borderRadius: 10,
+    paddingHorizontal: 16, paddingVertical: 8,
   },
-  inviteBtnText: { color: '#000', fontWeight: '700', fontSize: 14 },
+  nameSaveText: { color: '#0A0A0A', fontWeight: '700', fontSize: 14 },
 
   timeRow: {
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
