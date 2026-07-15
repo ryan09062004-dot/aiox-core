@@ -164,7 +164,7 @@ export default function CoachScreen() {
         >
           {showSuggestions && (
             <View style={styles.emptyState}>
-              <Text style={styles.emptyTitle}>Olá! Sou o Personal {coachName}</Text>
+              <Text style={styles.emptyTitle}>Olá, Sou o Personal {coachName}.</Text>
               <Text style={styles.emptyBody}>
                 Estou aqui para ajudar com seu treino, explicar exercícios e acompanhar sua evolução.
                 Escolha uma sugestão ou escreva sua dúvida.

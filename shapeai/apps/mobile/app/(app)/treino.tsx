@@ -50,6 +50,7 @@ export default function TreinoTab() {
   const [showPicker, setShowPicker] = useState(false)
   const [weeks, setWeeks] = useState<WorkoutWeek[]>([])
   const [goal, setGoal] = useState<PrimaryGoal | null>(null)
+  const [profileMetrics, setProfileMetrics] = useState<{ height_cm: number; weight_kg: number } | null>(null)
   const [selectedWeek, setSelectedWeek] = useState(0)
   const [completed, setCompleted] = useState<Set<string>>(new Set())
   const [shareTarget, setShareTarget] = useState<{ session: WorkoutSession; weekNumber: number } | null>(null)
@@ -79,7 +80,11 @@ export default function TreinoTab() {
         listAnalyses(1),
         getUserProfile(),
       ])
-      if (profileRes.status === 'fulfilled') setGoal(profileRes.value.primary_goal)
+      if (profileRes.status === 'fulfilled') {
+        setGoal(profileRes.value.primary_goal)
+        const { height_cm, weight_kg } = profileRes.value
+        if (height_cm && weight_kg) setProfileMetrics({ height_cm, weight_kg })
+      }
       if (analysesRes.status === 'rejected') return
 
       const all = analysesRes.value.analyses.filter(a => a.status === 'completed')
@@ -164,7 +169,22 @@ export default function TreinoTab() {
   const freeSessionCount =
     isPro || selectedWeek > 0 ? displaySessions.length : FREE_SESSIONS_IN_WEEK_1
   const lockedSessions = displaySessions.slice(freeSessionCount)
-  const goalLabel = goal ? GOAL_LABEL[goal] : '—'
+  // Só nesta tela o objetivo de emagrecimento vira uma meta concreta em kg. O alvo é o
+  // peso para IMC 21 — parte de baixo da faixa saudável (18,5–24,9), ainda saudável mas
+  // ambicioso. Abaixo de 3kg a meta soa boba, então cai para "Emagrecer".
+  function fatLossLabel(): string {
+    if (!profileMetrics) return 'Emagrecer'
+    const h = profileMetrics.height_cm / 100
+    const target = 21 * h * h
+    const toLose = Math.round(profileMetrics.weight_kg - target)
+    return toLose >= 3 ? `Perder ${toLose}kg` : 'Emagrecer'
+  }
+
+  const goalLabel = goal
+    ? goal === 'fat_loss'
+      ? fatLossLabel()
+      : GOAL_LABEL[goal]
+    : '—'
   const sessionsPerWeek = weeks[0]?.sessions.length ?? 0
   const totalSessions = weeks.reduce((s, w) => s + w.sessions.length, 0)
   const completionPct = totalSessions > 0 ? Math.round((completed.size / totalSessions) * 100) : 0
@@ -217,7 +237,6 @@ export default function TreinoTab() {
           <View style={styles.headerInfo}>
             <Text style={styles.headerLabel}>Seu objetivo</Text>
             <Text style={styles.goalLabel}>{goalLabel}</Text>
-            <Text style={styles.planMeta}>4 semanas · {sessionsPerWeek} treinos/semana</Text>
           </View>
           <View style={styles.scoreBlock}>
             {loadingWorkout ? (
@@ -387,7 +406,7 @@ const styles = StyleSheet.create({
   headerBody: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between' },
   headerInfo: { gap: 3 },
   headerLabel: { color: '#444', fontSize: 11, fontWeight: '600', letterSpacing: 0.5, textTransform: 'uppercase' },
-  goalLabel: { color: '#fff', fontSize: 20, fontWeight: '800' },
+  goalLabel: { color: '#fff', fontSize: 26, fontWeight: '800' },
   planMeta: { color: '#444', fontSize: 13 },
   scoreBlock: { alignItems: 'flex-end', gap: 2, paddingBottom: 2 },
   scoreValue: { fontSize: 34, fontWeight: '800', color: '#4CAF50' },

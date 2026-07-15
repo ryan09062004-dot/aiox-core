@@ -22,7 +22,7 @@ import { PHOTO_TIP_STORAGE_KEY } from './photo-tip'
 
 // TEMP: rodapé "Ver detalhes · N opções" dos cards de refeição ocultado temporariamente.
 // Voltar para true quando for reexibir.
-const SHOW_MEAL_DETAILS_FOOTER = true
+const SHOW_MEAL_DETAILS_FOOTER = false
 
 const MEAL_ICONS: Record<string, string> = {
   'Café da Manhã': '☀️',

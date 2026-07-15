@@ -118,6 +118,10 @@ function estimateDuration(exercises: WorkoutSession['exercises']): number {
 function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit' })
 }
+function todayFullDate() {
+  const s = new Date().toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' })
+  return s.charAt(0).toUpperCase() + s.slice(1)
+}
 
 type TodayWorkout =
   | { kind: 'rest' | 'none' }
@@ -147,7 +151,6 @@ function Ring({ pct, size = 56 }: { pct: number; size?: number }) {
 export default function HomeScreen() {
   const insets = useSafeAreaInsets()
   const { isPro } = useSubscription()
-  const [headerHeight, setHeaderHeight] = useState(0)
   const { session, isGuest } = useAuthStore()
   const [goal, setGoal] = useState<PrimaryGoal | null>(null)
   const [weight, setWeight] = useState<number | null>(null)
@@ -161,6 +164,7 @@ export default function HomeScreen() {
   const [nameInput, setNameInput] = useState('')
   const [shareVisible, setShareVisible] = useState(false)
   const [planTotalWeeks, setPlanTotalWeeks] = useState(4)
+  const [weekProgress, setWeekProgress] = useState<{ day: string; done: boolean; isToday: boolean }[]>([])
   const sweepAnim = useRef(new Animated.Value(-160)).current
 
   useEffect(() => {
@@ -256,9 +260,23 @@ export default function HomeScreen() {
 
       const jsDay = new Date().getDay()
       const todayName = JS_DAY_TO_NAME[jsDay]
+
+      // Progresso da semana: cada dia de treino do plano-semana atual vira um círculo,
+      // com check nos concluídos e destaque no dia de hoje.
+      const week = weeks[elapsedWeek(last.completed_at!, weeks.length)]
+      setWeekProgress(
+        (week?.sessions ?? []).map((sess: WorkoutSession) => {
+          const dayName = normalizeDay(sess.day)
+          return {
+            day: dayName,
+            done: completedSet.has(sessionKey(week.week_number, sess.day)),
+            isToday: dayName === todayName,
+          }
+        })
+      )
+
       if (!todayName) { setTodayWorkout({ kind: 'rest' }); return }
 
-      const week = weeks[elapsedWeek(last.completed_at!, weeks.length)]
       const s = week?.sessions.find((s: WorkoutSession) => normalizeDay(s.day) === todayName) as WorkoutSession | undefined
       if (!s) { setTodayWorkout({ kind: 'rest' }); return }
 
@@ -287,6 +305,7 @@ export default function HomeScreen() {
     const total = weeks.reduce((acc: number, w: any) => acc + w.sessions.length, 0)
     setPlanPct(total > 0 ? Math.round((set.size / total) * 100) : 0)
     setTodayWorkout({ ...todayWorkout, isCompleted: !isCompleted })
+    setWeekProgress((prev) => prev.map((d) => (d.isToday ? { ...d, done: !isCompleted } : d)))
   }
 
   const name = displayName ?? session?.user?.email?.split('@')[0] ?? 'atleta'
@@ -299,277 +318,256 @@ export default function HomeScreen() {
     <View style={styles.root}>
       <ScrollView
         style={styles.scroll}
-        contentContainerStyle={[styles.container, { paddingTop: headerHeight }]}
+        contentContainerStyle={[styles.container, { paddingTop: insets.top + 28 }]}
         showsVerticalScrollIndicator={false}
       >
 
-      {/* ── Hero ── */}
-      {/* Com análise feita, o fundo é a imagem de evolução DA PESSOA: "veja sua evolução"
-          deixa de ser promessa e vira literal. Sem análise, não há imagem dela — e uma
-          foto de banco só enfraqueceria a promessa, então o hero fica tipográfico. */}
-      {futureSelfUrl ? (
-        <View style={styles.heroImageWrapper}>
-          <Image
-            source={{ uri: futureSelfUrl }}
-            style={styles.heroImage}
-            resizeMode="cover"
-          />
-          <LinearGradient
-            colors={['transparent', 'rgba(10,10,10,0.8)', '#0A0A0A']}
-            style={styles.heroFadeBottom}
-            pointerEvents="none"
-          />
-          <View style={styles.heroTextBlock}>
-            <Text style={styles.heroTitle}>
-              Sua <Text style={styles.heroHighlight}>evolução</Text>{'\n'}já começou.
-            </Text>
-            <Text style={styles.heroSub}>
-              Esta é a sua projeção. Siga o plano e ela vira realidade.
-            </Text>
-          </View>
-        </View>
-      ) : (
-        <View style={styles.heroWrapper}>
-          <Text style={styles.heroTitle}>
-            Veja sua <Text style={styles.heroHighlight}>evolução</Text>{'\n'}antes de começar.
-          </Text>
-          <Text style={styles.heroSub}>
-            Avalie seu shape e evolua com um plano feito para você.
-          </Text>
-        </View>
-      )}
-
-      {/* ── Avaliação de Shape ── */}
-      <View style={styles.evalCard}>
-        <View style={styles.evalBody}>
-          <Ionicons name="pulse-outline" size={28} color="#4CAF50" />
-          <View style={styles.evalText}>
-            <Text style={styles.evalTitle}>Avaliar Meu Shape</Text>
-            <Text style={styles.evalSub}>
-              {hasAnalysis
-                ? `Última: ${formatDate(lastAnalysis!.completed_at ?? lastAnalysis!.created_at)}`
-                : 'Envie suas fotos e receba uma análise completa com seu score.'}
-            </Text>
-          </View>
-          <Ionicons name="chevron-forward" size={18} color="#444" />
-        </View>
-        <TouchableOpacity onPress={async () => {
-          const skip = await AsyncStorage.getItem(PHOTO_TIP_STORAGE_KEY)
-          router.push((skip === 'true' ? '/(app)/camera' : '/(app)/photo-tip') as never)
-        }} activeOpacity={0.85}>
-          <LinearGradient
-            colors={['#4CAF50', '#4CAF50', '#2E7D32']}
-            locations={[0, 0.45, 1]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 0, y: 1 }}
-            style={styles.evalBtn}
-          >
-            <View style={[StyleSheet.absoluteFill, styles.sweepClip]}>
-              <Animated.View style={[styles.sweepOverlay, { transform: [{ translateX: sweepAnim }] }]}>
-                <LinearGradient
-                  colors={['rgba(255,255,255,0)', 'rgba(255,255,255,0.14)', 'rgba(255,255,255,0.14)', 'rgba(255,255,255,0)']}
-                  locations={[0, 0.15, 0.85, 1]}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 0 }}
-                  style={{ width: 260, height: '100%' }}
-                />
-              </Animated.View>
+      {/* Cabeçalho inline: saudação + data à esquerda, ajustes à direita */}
+      <View style={styles.topBar}>
+        <View style={{ flex: 1 }}>
+          <View style={styles.topGreetingRow}>
+            <Text style={styles.topGreeting}>Olá, {name}!</Text>
+            <View style={styles.topPro}>
+              <Text style={styles.topProText}>PRO</Text>
             </View>
-            <Ionicons name="scan" size={18} color="#FFFFFF" />
-            <Text style={[styles.evalBtnText, { color: '#FFFFFF' }]}>{hasAnalysis ? 'Nova Avaliação' : 'Começar Agora'}</Text>
-          </LinearGradient>
+          </View>
+          <Text style={styles.topDate}>{todayFullDate()}</Text>
+        </View>
+        <TouchableOpacity style={styles.gearCircle} onPress={() => router.push('/(app)/profile')} activeOpacity={0.8}>
+          <Ionicons name="settings-outline" size={20} color="#999" />
         </TouchableOpacity>
       </View>
 
-      {/* ── Métricas ── */}
       {hasAnalysis ? (
-        <View style={styles.metricsRow}>
-          <View style={styles.metricBlock}>
-            <Text style={[styles.metricValue, { color: score ? getScoreColor(score) : '#fff' }]}>
-              {score ?? '—'}
+        // ── HOME DE USO DIÁRIO — estilo painel de progresso ──
+        (() => {
+          const doneWeek = weekProgress.filter((d) => d.done).length
+          const totalWeek = weekProgress.length || 5
+          return (
+        <>
+          {/* 1 — Progresso da semana */}
+          <View style={styles.card}>
+            <View style={styles.cardHeaderRow}>
+              <Text style={styles.cardTitle}>Progresso da semana</Text>
+              <Text style={styles.cardCounter}>{doneWeek} de {totalWeek} treinos</Text>
+            </View>
+            <View style={styles.weekDays}>
+              {weekProgress.map((d, i) => (
+                <View key={i} style={styles.weekDay}>
+                  <View
+                    style={[
+                      styles.weekCircle,
+                      d.done && styles.weekCircleDone,
+                      d.isToday && !d.done && styles.weekCircleToday,
+                    ]}
+                  >
+                    {d.done && <Ionicons name="checkmark" size={16} color="#0A0A0A" />}
+                  </View>
+                  <Text style={[styles.weekDayLabel, d.isToday && styles.weekDayLabelToday]}>
+                    {d.day.slice(0, 3)}
+                  </Text>
+                </View>
+              ))}
+            </View>
+          </View>
+
+          {/* 2 — Métricas em cards horizontais (estilo streak) */}
+          <View style={styles.statRow}>
+            <View style={styles.statCard}>
+              <Ionicons name="flame" size={18} color="#4CAF50" />
+              <Text style={[styles.statValue, { color: score ? getScoreColor(score) : '#fff' }]}>{score ?? '—'}</Text>
+              <Text style={styles.statLabel}>Score atual</Text>
+            </View>
+            <View style={styles.statCard}>
+              <Ionicons name="body" size={18} color="#4CAF50" />
+              <Text style={styles.statValue}>{fat != null ? `${fat.toFixed(1)}%` : '—'}</Text>
+              <Text style={styles.statLabel}>Gordura</Text>
+            </View>
+            <View style={styles.statCard}>
+              <Ionicons name="barbell" size={18} color="#4CAF50" />
+              <Text style={styles.statValue}>{weight != null ? `${weight}kg` : '—'}</Text>
+              <Text style={styles.statLabel}>Peso</Text>
+            </View>
+          </View>
+
+          {/* 3 — Objetivo do dia / desafio da semana */}
+          <View style={styles.card}>
+            <View style={styles.challengeHeader}>
+              <View style={styles.challengeBadge}>
+                <Ionicons name="trophy" size={12} color="#4CAF50" />
+                <Text style={styles.challengeBadgeText}>DESAFIO DA SEMANA</Text>
+              </View>
+            </View>
+            <Text style={styles.challengeTitle}>
+              {doneWeek >= totalWeek ? 'Semana completa! 🔥' : `Conclua seus ${totalWeek} treinos`}
             </Text>
-            <Text style={styles.metricLabel}>Score Atual</Text>
-          </View>
-          <View style={styles.metricDivider} />
-          <View style={styles.metricBlock}>
-            <Text style={styles.metricValue}>{fat != null ? `${fat.toFixed(1)}%` : '—'}</Text>
-            <Text style={styles.metricLabel}>Gordura</Text>
-          </View>
-          <View style={styles.metricDivider} />
-          <View style={styles.metricBlock}>
-            <Text style={styles.metricValue}>
-              {weight != null ? `${weight}kg` : '—'}
+            <View style={styles.challengeTrack}>
+              <View style={[styles.challengeFill, { width: `${Math.round((doneWeek / totalWeek) * 100)}%` }]} />
+            </View>
+            <Text style={styles.challengeSub}>
+              {doneWeek >= totalWeek
+                ? 'Você fechou a semana. Descanse com orgulho.'
+                : `Faltam ${totalWeek - doneWeek} para desbloquear a semana`}
             </Text>
-            <Text style={styles.metricLabel}>Peso</Text>
-          </View>
-        </View>
-      ) : lastAnalysis === null ? (
-        <View style={styles.firstStepCard}>
-          <View style={styles.firstStepHeader}>
-            <Ionicons name="trophy-outline" size={20} color="#4CAF50" />
-            <Text style={styles.firstStepTitle}>Descubra seu Shape</Text>
-          </View>
-          {[
-            'Score corporal personalizado',
-            'Plano de treino em 4 semanas',
-            '% de gordura estimada',
-          ].map((item) => (
-            <View key={item} style={styles.firstStepItem}>
-              <Text style={styles.firstStepBullet}>✦</Text>
-              <Text style={styles.firstStepText}>{item}</Text>
-            </View>
-          ))}
-        </View>
-      ) : null}
-
-      {/* ── Atalho Nutrição ── */}
-      <TouchableOpacity
-        style={styles.nutritionShortcut}
-        onPress={() => router.push('/(app)/meal-plan' as never)}
-        activeOpacity={0.85}
-      >
-        <View style={styles.nutritionIcon}>
-          <Ionicons name="restaurant-outline" size={20} color="#4CAF50" />
-        </View>
-        <View style={styles.nutritionText}>
-          <Text style={styles.nutritionTitle}>Plano Alimentar</Text>
-          <Text style={styles.nutritionSub}>5 refeições personalizadas · IA</Text>
-        </View>
-        <Ionicons name="chevron-forward" size={16} color="#333" />
-      </TouchableOpacity>
-
-      {/* ── Plano de Hoje ── */}
-      {todayWorkout !== null && todayWorkout?.kind === 'session' && (
-        <TouchableOpacity
-          style={styles.planCard}
-          onPress={() => router.push('/(app)/treino')}
-          activeOpacity={0.85}
-        >
-          <View style={styles.planBody}>
-            <View style={styles.planInfo}>
-              <Text style={styles.planLabel}>Hoje é dia de</Text>
-              <Text style={styles.planFocus}>{todayWorkout.session.focus}</Text>
-              <Text style={styles.planMeta}>
-                {todayWorkout.session.exercises.length} exercícios · ~{estimateDuration(todayWorkout.session.exercises)} min · Sem. {todayWorkout.weekNumber}
-              </Text>
-            </View>
-            <View style={styles.planRing}>
-              <Ring pct={planPct} size={60} />
-              <Text style={styles.planPct}>{planPct}%</Text>
-            </View>
           </View>
 
-          <View style={styles.planFooterRow}>
-            <TouchableOpacity style={{ flex: 1, marginRight: 8 }} onPress={() => router.push('/(app)/treino')}>
-              <Text style={styles.planLink} numberOfLines={1}>
-                +{todayWorkout.session.exercises.length} exercícios · Ver plano completo
-              </Text>
-            </TouchableOpacity>
-            {todayWorkout.isCompleted && (
-              <TouchableOpacity style={styles.shareWorkoutBtn} onPress={() => setShareVisible(true)}>
-                <Ionicons name="share-outline" size={14} color="#aaa" />
-                <Text style={styles.shareWorkoutText}>Compartilhar treino</Text>
+          {/* 4 — Treino de hoje (ação principal) */}
+          {todayWorkout?.kind === 'session' ? (
+            <View style={styles.card}>
+              <View style={styles.todayTop}>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.todayEyebrow}>TREINO DE HOJE</Text>
+                  <Text style={styles.todayFocus}>{todayWorkout.session.focus}</Text>
+                  <Text style={styles.todayMeta}>
+                    {todayWorkout.session.exercises.length} exercícios · ~{estimateDuration(todayWorkout.session.exercises)} min
+                  </Text>
+                </View>
+                <View style={styles.planRing}>
+                  <Ring pct={planPct} size={56} />
+                  <Text style={styles.planPct}>{planPct}%</Text>
+                </View>
+              </View>
+              <TouchableOpacity
+                style={[styles.todayCta, todayWorkout.isCompleted && styles.todayCtaDone]}
+                onPress={todayWorkout.isCompleted ? () => router.push('/(app)/treino') : toggleTodaySession}
+                activeOpacity={0.85}
+              >
+                <Ionicons
+                  name={todayWorkout.isCompleted ? 'checkmark-circle' : 'barbell'}
+                  size={18}
+                  color={todayWorkout.isCompleted ? '#4CAF50' : '#0A0A0A'}
+                />
+                <Text style={[styles.todayCtaText, todayWorkout.isCompleted && styles.todayCtaTextDone]}>
+                  {todayWorkout.isCompleted ? 'Treino concluído ✓' : 'Marcar como concluído'}
+                </Text>
               </TouchableOpacity>
-            )}
+              <View style={styles.todayFooterRow}>
+                <TouchableOpacity onPress={() => router.push('/(app)/treino')}>
+                  <Text style={styles.todayLink}>Ver plano completo →</Text>
+                </TouchableOpacity>
+                {todayWorkout.isCompleted && (
+                  <TouchableOpacity style={styles.shareWorkoutBtn} onPress={() => setShareVisible(true)}>
+                    <Ionicons name="share-outline" size={14} color="#888" />
+                    <Text style={styles.shareWorkoutText}>Compartilhar</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+            </View>
+          ) : (
+            <View style={styles.restCard}>
+              <Text style={styles.restEmoji}>🛌</Text>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.restTitle}>Dia de descanso</Text>
+                <Text style={styles.restSub}>Recupere hoje e volte amanhã mais forte.</Text>
+              </View>
+            </View>
+          )}
+
+          {/* 5 — Acesso rápido: dieta, nova avaliação, perfil */}
+          <View style={styles.shortcutRow}>
+            <TouchableOpacity style={styles.shortcut} onPress={() => router.push('/(app)/meal-plan' as never)} activeOpacity={0.85}>
+              <Ionicons name="restaurant-outline" size={20} color="#4CAF50" />
+              <Text style={styles.shortcutText}>Dieta</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.shortcut}
+              onPress={async () => {
+                const skip = await AsyncStorage.getItem(PHOTO_TIP_STORAGE_KEY)
+                router.push((skip === 'true' ? '/(app)/camera' : '/(app)/photo-tip') as never)
+              }}
+              activeOpacity={0.85}
+            >
+              <Ionicons name="scan-outline" size={20} color="#4CAF50" />
+              <Text style={styles.shortcutText}>Avaliar</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.shortcut} onPress={() => router.push('/(app)/profile')} activeOpacity={0.85}>
+              <Ionicons name="person-outline" size={20} color="#4CAF50" />
+              <Text style={styles.shortcutText}>Perfil</Text>
+            </TouchableOpacity>
+          </View>
+
+          {todayWorkout?.kind === 'session' && (
+            <WorkoutShareCard
+              visible={shareVisible}
+              onClose={() => setShareVisible(false)}
+              session={todayWorkout.session}
+              weekNumber={todayWorkout.weekNumber}
+              totalWeeks={planTotalWeeks}
+              duration={estimateDuration(todayWorkout.session.exercises)}
+            />
+          )}
+        </>
+          )
+        })()
+      ) : (
+        // ── HOME DE PRIMEIRA VEZ: um objetivo só — fazer a avaliação ──
+        <>
+          <View style={styles.heroWrapper}>
+            <Text style={styles.heroTitle}>
+              Veja sua <Text style={styles.heroHighlight}>evolução</Text>{'\n'}antes de começar.
+            </Text>
+            <Text style={styles.heroSub}>
+              Tire uma foto, receba sua análise corporal completa e um plano feito para o seu corpo.
+            </Text>
+          </View>
+
+          <View style={styles.firstStepCard}>
+            {[
+              'Análise corporal com seu score',
+              'Projeção do seu resultado (foto)',
+              'Plano de treino e dieta sob medida',
+            ].map((item) => (
+              <View key={item} style={styles.firstStepItem}>
+                <Ionicons name="checkmark-circle" size={18} color="#4CAF50" />
+                <Text style={styles.firstStepText}>{item}</Text>
+              </View>
+            ))}
           </View>
 
           <TouchableOpacity
-            style={[styles.completedBtn, todayWorkout.isCompleted && styles.completedBtnDone]}
-            onPress={toggleTodaySession}
-            activeOpacity={0.8}
+            onPress={async () => {
+              const skip = await AsyncStorage.getItem(PHOTO_TIP_STORAGE_KEY)
+              router.push((skip === 'true' ? '/(app)/camera' : '/(app)/photo-tip') as never)
+            }}
+            activeOpacity={0.85}
           >
-            <Ionicons name={todayWorkout.isCompleted ? 'checkmark-circle' : 'checkmark-circle-outline'} size={18} color={todayWorkout.isCompleted ? '#4CAF50' : '#fff'} />
-            <Text style={[styles.completedBtnText, todayWorkout.isCompleted && styles.completedBtnTextDone]}>
-              {todayWorkout.isCompleted ? 'Concluído ✓' : 'Marcar como concluído'}
-            </Text>
+            <LinearGradient
+              colors={['#4CAF50', '#4CAF50', '#2E7D32']}
+              locations={[0, 0.45, 1]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 0, y: 1 }}
+              style={styles.evalBtn}
+            >
+              <View style={[StyleSheet.absoluteFill, styles.sweepClip]}>
+                <Animated.View style={[styles.sweepOverlay, { transform: [{ translateX: sweepAnim }] }]}>
+                  <LinearGradient
+                    colors={['rgba(255,255,255,0)', 'rgba(255,255,255,0.14)', 'rgba(255,255,255,0.14)', 'rgba(255,255,255,0)']}
+                    locations={[0, 0.15, 0.85, 1]}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 0 }}
+                    style={{ width: 260, height: '100%' }}
+                  />
+                </Animated.View>
+              </View>
+              <Ionicons name="scan" size={18} color="#FFFFFF" />
+              <Text style={[styles.evalBtnText, { color: '#FFFFFF' }]}>Fazer minha avaliação</Text>
+            </LinearGradient>
           </TouchableOpacity>
-        </TouchableOpacity>
-      )}
-
-      {todayWorkout?.kind === 'session' && (
-        <WorkoutShareCard
-          visible={shareVisible}
-          onClose={() => setShareVisible(false)}
-          session={todayWorkout.session}
-          weekNumber={todayWorkout.weekNumber}
-          totalWeeks={planTotalWeeks}
-          duration={estimateDuration(todayWorkout.session.exercises)}
-        />
-      )}
-
-      {todayWorkout?.kind === 'rest' && (
-        <View style={styles.planCard}>
-          <Text style={styles.planLabel}>Treino do Dia</Text>
-          <Text style={styles.restText}>🛌  Dia de descanso — volte amanhã mais forte!</Text>
-        </View>
+        </>
       )}
 
       <DailyQuoteCard />
     </ScrollView>
 
-      {/* ── Glass Header ── */}
-      <BlurView intensity={85} tint="dark" style={[styles.glassHeader, { paddingTop: insets.top + 6 }]} onLayout={(e) => setHeaderHeight(e.nativeEvent.layout.height)}>
-        <View style={styles.header}>
-          <View style={styles.avatarRow}>
-            <LinearGradient
-              colors={['#00FF85', '#FFE500']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={styles.avatarRing}
-            >
-              <TouchableOpacity onPress={pickAvatar} style={styles.avatar} activeOpacity={0.8}>
-                {avatarUri ? (
-                  <Image source={{ uri: avatarUri }} style={styles.avatarImage} />
-                ) : (
-                  <Text style={styles.avatarText}>{initial}</Text>
-                )}
-              </TouchableOpacity>
-            </LinearGradient>
-            <View>
-              {editingName ? (
-                <TextInput
-                  style={styles.nameInput}
-                  value={nameInput}
-                  onChangeText={setNameInput}
-                  onBlur={saveName}
-                  onSubmitEditing={saveName}
-                  autoFocus
-                  returnKeyType="done"
-                  maxLength={24}
-                />
-              ) : (
-                <TouchableOpacity onPress={() => startEditingName(name)} activeOpacity={0.7}>
-                  <Text style={styles.greeting}>{name} 🔥</Text>
-                </TouchableOpacity>
-              )}
-              <Text style={styles.tagline}>Foque. Treine. Evolua.</Text>
-            </View>
-          </View>
-          <View style={styles.headerRight}>
-            {/* O selo só aparece para quem realmente assina — antes era fixo no JSX e
-                todo usuário via "PRO" ao lado do próprio nome. */}
-            {isPro && (
-              <LinearGradient
-                colors={['#00FF85', '#FFE500']}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 0 }}
-                style={styles.badgeProGradient}
-              >
-                <View style={styles.badgePro}>
-                  <MaskedView maskElement={<View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}><MaterialCommunityIcons name="crown" size={11} color="#fff" /><Text style={styles.badgeProText}>PRO</Text></View>}>
-                    <LinearGradient colors={['#00FF85', '#FFE500']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}>
-                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}><MaterialCommunityIcons name="crown" size={11} color="#fff" style={{ opacity: 0 }} /><Text style={[styles.badgeProText, { opacity: 0 }]}>PRO</Text></View>
-                    </LinearGradient>
-                  </MaskedView>
-                </View>
-              </LinearGradient>
-            )}
-            <TouchableOpacity onPress={() => router.push('/(app)/profile')} activeOpacity={0.7} style={styles.gearBtn}>
-              <Ionicons name="settings-outline" size={22} color="#555" />
-            </TouchableOpacity>
-          </View>
-        </View>
-      </BlurView>
+      {/* ── Botão flutuante do Personal (chat) ── */}
+      <TouchableOpacity
+        style={[styles.fab, { bottom: insets.bottom + 20 }]}
+        onPress={() => router.push('/(app)/coach')}
+        activeOpacity={0.85}
+      >
+        <Ionicons name="chatbubble-ellipses" size={24} color="#0A0A0A" />
+      </TouchableOpacity>
+
     </View>
   )
 }
@@ -682,6 +680,136 @@ const styles = StyleSheet.create({
   firstStepItem: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   firstStepBullet: { color: '#4CAF50', fontSize: 11, fontWeight: '800' },
   firstStepText: { color: '#888', fontSize: 13 },
+
+  // Cabeçalho inline
+  topBar: { flexDirection: 'row', alignItems: 'center', marginBottom: 4 },
+  topGreetingRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  topGreeting: { color: '#fff', fontSize: 24, fontWeight: '800' },
+  topPro: {
+    backgroundColor: '#4CAF50',
+    paddingHorizontal: 9, paddingVertical: 3, borderRadius: 8,
+  },
+  topProText: { color: '#0A0A0A', fontSize: 11, fontWeight: '800', letterSpacing: 0.8 },
+  topDate: { color: '#666', fontSize: 13, marginTop: 2 },
+  gearCircle: {
+    width: 40, height: 40, borderRadius: 20,
+    backgroundColor: '#161616',
+    borderWidth: 1, borderColor: '#242424',
+    alignItems: 'center', justifyContent: 'center',
+  },
+
+  // Home diária — cartões
+  card: {
+    backgroundColor: '#111',
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: '#1F1F1F',
+    padding: 18,
+    gap: 14,
+  },
+  cardHeaderRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  cardTitle: { color: '#fff', fontSize: 16, fontWeight: '700' },
+  cardCounter: { color: '#666', fontSize: 12, fontWeight: '600' },
+
+  // Progresso da semana
+  weekDays: { flexDirection: 'row', justifyContent: 'space-between' },
+  weekDay: { alignItems: 'center', gap: 6 },
+  weekCircle: {
+    width: 34, height: 34, borderRadius: 17,
+    borderWidth: 2, borderColor: '#2A2A2A',
+    alignItems: 'center', justifyContent: 'center',
+  },
+  weekCircleDone: { backgroundColor: '#4CAF50', borderColor: '#4CAF50' },
+  weekCircleToday: { borderColor: '#4CAF50' },
+  weekDayLabel: { color: '#555', fontSize: 11, fontWeight: '600' },
+  weekDayLabelToday: { color: '#4CAF50' },
+
+  // Cards de estatística horizontais
+  statRow: { flexDirection: 'row', gap: 10 },
+  statCard: {
+    flex: 1,
+    backgroundColor: '#111',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#1F1F1F',
+    paddingVertical: 16,
+    alignItems: 'center',
+    gap: 6,
+  },
+  statValue: { color: '#fff', fontSize: 20, fontWeight: '800' },
+  statLabel: { color: '#555', fontSize: 11, fontWeight: '600' },
+
+  // Desafio da semana
+  challengeHeader: { flexDirection: 'row' },
+  challengeBadge: {
+    flexDirection: 'row', alignItems: 'center', gap: 5,
+    backgroundColor: 'rgba(76,175,80,0.12)',
+    paddingHorizontal: 9, paddingVertical: 4, borderRadius: 8,
+  },
+  challengeBadgeText: { color: '#4CAF50', fontSize: 10, fontWeight: '800', letterSpacing: 0.6 },
+  challengeTitle: { color: '#fff', fontSize: 17, fontWeight: '700' },
+  challengeTrack: { height: 8, borderRadius: 4, backgroundColor: '#1F1F1F', overflow: 'hidden' },
+  challengeFill: { height: '100%', borderRadius: 4, backgroundColor: '#4CAF50' },
+  challengeSub: { color: '#666', fontSize: 12 },
+
+  // FAB do chat
+  fab: {
+    position: 'absolute',
+    right: 20,
+    width: 56, height: 56, borderRadius: 28,
+    backgroundColor: '#4CAF50',
+    alignItems: 'center', justifyContent: 'center',
+    shadowColor: '#000', shadowOpacity: 0.4, shadowRadius: 8, shadowOffset: { width: 0, height: 4 },
+    elevation: 6,
+  },
+
+  todayTop: { flexDirection: 'row', alignItems: 'center', gap: 16 },
+  todayEyebrow: { color: '#4CAF50', fontSize: 11, fontWeight: '800', letterSpacing: 0.8, marginBottom: 4 },
+  todayFocus: { color: '#fff', fontSize: 22, fontWeight: '800' },
+  todayMeta: { color: '#666', fontSize: 12, marginTop: 4 },
+  todayCta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: '#4CAF50',
+    borderRadius: 12,
+    paddingVertical: 14,
+  },
+  todayCtaDone: { backgroundColor: '#161616', borderWidth: 1, borderColor: '#2E4E2E' },
+  todayCtaText: { color: '#0A0A0A', fontSize: 15, fontWeight: '700' },
+  todayCtaTextDone: { color: '#4CAF50' },
+  todayFooterRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  todayLink: { color: '#888', fontSize: 13, fontWeight: '600' },
+
+  restCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+    backgroundColor: '#111',
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: '#1F1F1F',
+    padding: 20,
+  },
+  restEmoji: { fontSize: 30 },
+  restTitle: { color: '#fff', fontSize: 17, fontWeight: '700' },
+  restSub: { color: '#888', fontSize: 13, marginTop: 2 },
+
+  shortcutRow: { flexDirection: 'row', gap: 12 },
+  shortcut: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: '#141414',
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: '#1F1F1F',
+    paddingVertical: 16,
+  },
+  shortcutText: { color: '#ccc', fontSize: 14, fontWeight: '600' },
 
   // Metrics
   metricsRow: {

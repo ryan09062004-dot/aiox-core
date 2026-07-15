@@ -118,24 +118,26 @@ function ScoreGauge({ score }: { score: number }) {
     return () => { animatedScore.removeAllListeners() }
   }, [score])
 
+  // Número e "PTS" como Text sobreposto (não SvgText), para bater exatamente com a
+  // tipografia do card de Avaliações — SvgText renderiza a fonte de forma diferente.
   return (
-    <Svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
-      <Circle cx={cx} cy={cy} r={radius} stroke="#1A1A1A" strokeWidth={strokeWidth} fill="none" />
-      <AnimatedCircle
-        cx={cx} cy={cy} r={radius}
-        stroke={color} strokeWidth={strokeWidth} fill="none"
-        strokeDasharray={`${circumference} ${circumference}`}
-        strokeDashoffset={animatedOffset}
-        strokeLinecap="round"
-        rotation="-90" origin={`${cx}, ${cy}`}
-      />
-      <SvgText x={cx} y={cy + 5} textAnchor="middle" fontSize="36" fontWeight="bold" fill="#fff">
-        {displayScore}
-      </SvgText>
-      <SvgText x={cx} y={cy + 30} textAnchor="middle" fontSize="11" fontWeight="600" fill="#555" letterSpacing="2">
-        PTS
-      </SvgText>
-    </Svg>
+    <View style={{ width: size, height: size, alignItems: 'center', justifyContent: 'center' }}>
+      <Svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} style={StyleSheet.absoluteFill}>
+        <Circle cx={cx} cy={cy} r={radius} stroke="#1A1A1A" strokeWidth={strokeWidth} fill="none" />
+        <AnimatedCircle
+          cx={cx} cy={cy} r={radius}
+          stroke={color} strokeWidth={strokeWidth} fill="none"
+          strokeDasharray={`${circumference} ${circumference}`}
+          strokeDashoffset={animatedOffset}
+          strokeLinecap="round"
+          rotation="-90" origin={`${cx}, ${cy}`}
+        />
+      </Svg>
+      <View style={[StyleSheet.absoluteFill, s.gaugeCenter]}>
+        <Text style={s.gaugeScore}>{displayScore}</Text>
+        <Text style={s.gaugeLabel}>PTS</Text>
+      </View>
+    </View>
   )
 }
 
@@ -168,7 +170,7 @@ function HeroCard({ score, date }: { score: number; date: string }) {
       <View style={[s.glowBorderLeft, { backgroundColor: color, shadowColor: color }]} pointerEvents="none" />
       <View style={[s.glowBorderRight, { backgroundColor: color, shadowColor: color }]} pointerEvents="none" />
       <View style={s.heroTop}>
-        <Text style={s.heroTitle}>Score de Shape</Text>
+        <Text style={s.heroTitle}>Pontuação Corporal</Text>
         <Text style={s.heroDate}>{formatDate(date)}</Text>
       </View>
       <View style={s.heroGauge}>
@@ -382,9 +384,6 @@ function FutureEvolutionCard({ imageUrl }: { imageUrl: string }) {
           resizeMode="cover"
         />
       </TouchableOpacity>
-      <Text style={fes.disclaimer}>
-        Gerado por IA com base na sua análise. Resultados reais dependem de consistência, alimentação e genética.
-      </Text>
       <ImageViewerModal
         visible={modalVisible}
         imageUrl={imageUrl}
@@ -435,11 +434,9 @@ export default function ReportScreen() {
 
   return (
     <View style={s.container}>
-      <View style={[s.header, { paddingTop: insets.top + 12 }]}>
-        <TouchableOpacity onPress={() => router.back()}>
-          <Text style={s.backBtn}>← Voltar</Text>
-        </TouchableOpacity>
-      </View>
+      {/* Acessado pela aba Avaliações — o "Voltar" era redundante com a barra de abas
+          inferior. Mantém-se só o respiro do topo para as abas não colarem no notch. */}
+      <View style={{ paddingTop: insets.top + 12 }} />
 
       <View style={s.tabBar}>
         {TABS.map((tab, i) => (
@@ -477,6 +474,11 @@ export default function ReportScreen() {
             <Text style={s.workoutButtonText}>Ver Plano Personalizado</Text>
             <Text style={s.workoutButtonArrow}>→</Text>
           </TouchableOpacity>
+          <Text style={s.workoutHint}>
+            A partir da sua análise, o app monta seu treino semana a semana, seu plano
+            alimentar com as calorias e macros certos, e acompanha sua evolução a cada nova
+            avaliação — tudo calibrado para o seu corpo e o seu objetivo.
+          </Text>
         </ScrollView>
 
         {/* Aba 2 — Insights */}
@@ -497,14 +499,6 @@ const s = StyleSheet.create({
   center: { flex: 1, backgroundColor: '#0A0A0A', justifyContent: 'center', alignItems: 'center' },
   errorText: { color: '#666', fontSize: 16, textAlign: 'center' },
 
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingBottom: 12,
-  },
-  backBtn: { color: '#4CAF50', fontSize: 16, fontWeight: '600' },
 
   tabBar: {
     flexDirection: 'row',
@@ -558,6 +552,10 @@ const s = StyleSheet.create({
   heroTitle: { color: '#bbb', fontSize: 16, fontWeight: '700', letterSpacing: 0.3 },
   heroDate: { color: '#444', fontSize: 12, letterSpacing: 0.5 },
   heroGauge: { marginVertical: 4 },
+  // Mesma tipografia do card destacado da aba Avaliações.
+  gaugeCenter: { alignItems: 'center', justifyContent: 'center' },
+  gaugeScore: { color: '#fff', fontSize: 38, fontWeight: 'bold', lineHeight: 42 },
+  gaugeLabel: { color: '#555', fontSize: 10, fontWeight: '600', letterSpacing: 2, marginTop: 2 },
   levelBadge: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -698,6 +696,7 @@ const s = StyleSheet.create({
   },
   workoutButtonText: { color: '#4CAF50', fontSize: 16, fontWeight: '700' },
   workoutButtonArrow: { color: '#4CAF50', fontSize: 18 },
+  workoutHint: { color: '#3A3A3A', fontSize: 11, textAlign: 'center', marginTop: 8, lineHeight: 16 },
 
 })
 

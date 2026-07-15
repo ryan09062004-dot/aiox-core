@@ -1,5 +1,5 @@
 import { Tabs, Redirect } from 'expo-router'
-import { Image } from 'react-native'
+import { Image, Text, StyleSheet } from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
 import { useAuthStore } from '../../src/stores/auth.store'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
@@ -11,6 +11,29 @@ function tabIcon(active: IoniconsName, inactive: IoniconsName) {
     <Ionicons name={focused ? active : inactive} size={24} color={color} />
   )
 }
+
+// Rótulo próprio: o rótulo padrão do React Navigation calcula uma altura apertada e corta
+// os acentos/cedilha ("Avaliações", "Nutrição") na web. Um <Text> com altura folgada e
+// sem clipping resolve de forma determinística.
+function tabLabel(text: string) {
+  return ({ color }: { color: string }) => (
+    <Text numberOfLines={1} style={[styles.tabLabel, { color }]}>
+      {text}
+    </Text>
+  )
+}
+
+const styles = StyleSheet.create({
+  tabLabel: {
+    fontSize: 10,
+    lineHeight: 16,
+    fontWeight: '600',
+    textAlign: 'center',
+    width: '100%',
+    paddingTop: 2,
+    paddingBottom: 2,
+  },
+})
 
 // Ícone próprio (PNG com alpha) — tintColor o recolore conforme o estado da aba,
 // igual aos Ionicons.
@@ -24,6 +47,8 @@ export default function AppLayout() {
   const { session, isGuest } = useAuthStore()
   const insets = useSafeAreaInsets()
 
+  const bottomPad = Math.max(insets.bottom, 10)
+
   if (!session && !isGuest) return <Redirect href="/(auth)/login" />
 
   return (
@@ -35,44 +60,34 @@ export default function AppLayout() {
           borderTopColor: '#1A1A1A',
           borderTopWidth: 1,
           paddingTop: 8,
-          paddingBottom: Math.max(insets.bottom, 10),
-          height: 70 + insets.bottom,
+          paddingBottom: bottomPad,
+          height: 62 + bottomPad,
         },
         tabBarActiveTintColor: '#4CAF50',
         tabBarInactiveTintColor: '#555',
-        // Rótulos com acentos e cedilha ("Avaliações", "Nutrição") precisam de altura de
-        // linha folgada — sem isso os acentos e o "ç" ficam cortados na borda inferior.
-        // (includeFontPadding:false corta justamente essas marcas no Android, por isso não
-        // é usado aqui.)
-        tabBarLabelStyle: {
-          fontSize: 10,
-          lineHeight: 14,
-          fontWeight: '600',
-          marginTop: 3,
-        },
         tabBarAllowFontScaling: false,
-        tabBarItemStyle: { paddingHorizontal: 2, paddingVertical: 2 },
+        tabBarItemStyle: { paddingHorizontal: 2 },
       }}
     >
       <Tabs.Screen
         name="index"
-        options={{ title: 'Início', tabBarIcon: tabIcon('home', 'home-outline') }}
+        options={{ title: 'Início', tabBarIcon: tabIcon('home', 'home-outline'), tabBarLabel: tabLabel('Início') }}
       />
       <Tabs.Screen
         name="history"
-        options={{ title: 'Avaliações', tabBarIcon: bodyScanIcon }}
+        options={{ title: 'Avaliações', tabBarIcon: bodyScanIcon, tabBarLabel: tabLabel('Avaliações') }}
       />
       <Tabs.Screen
         name="treino"
-        options={{ title: 'Treino', tabBarIcon: tabIcon('barbell', 'barbell-outline') }}
+        options={{ title: 'Treino', tabBarIcon: tabIcon('barbell', 'barbell-outline'), tabBarLabel: tabLabel('Treino') }}
       />
       <Tabs.Screen
         name="meal-plan"
-        options={{ title: 'Nutrição', tabBarIcon: tabIcon('restaurant', 'restaurant-outline') }}
+        options={{ title: 'Nutrição', tabBarIcon: tabIcon('restaurant', 'restaurant-outline'), tabBarLabel: tabLabel('Nutrição') }}
       />
       <Tabs.Screen
         name="coach"
-        options={{ title: 'Personal', tabBarIcon: tabIcon('chatbubbles', 'chatbubbles-outline') }}
+        options={{ title: 'Personal', tabBarIcon: tabIcon('chatbubbles', 'chatbubbles-outline'), tabBarLabel: tabLabel('Personal') }}
       />
       <Tabs.Screen name="profile"    options={{ href: null }} />
       <Tabs.Screen name="camera"    options={{ href: null }} />

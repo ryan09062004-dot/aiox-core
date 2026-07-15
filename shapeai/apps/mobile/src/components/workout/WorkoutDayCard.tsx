@@ -91,19 +91,22 @@ const styles = StyleSheet.create({
     gap: 10,
     marginTop: 14,
   },
+  // Contorno discreto, não fundo branco sólido — assim o botão não compete com o texto
+  // branco dos exercícios no card.
   doneBtn: {
     flex: 1,
     borderRadius: 10,
     paddingVertical: 11,
     alignItems: 'center',
-    backgroundColor: '#fff',
+    backgroundColor: '#161616',
+    borderWidth: 1,
+    borderColor: '#2E2E2E',
   },
   doneBtnActive: {
     backgroundColor: '#1B3A1B',
-    borderWidth: 1,
     borderColor: '#4CAF50',
   },
-  doneBtnText: { color: '#0A0A0A', fontSize: 14, fontWeight: '700' },
+  doneBtnText: { color: '#999', fontSize: 14, fontWeight: '600' },
   doneBtnTextActive: { color: '#4CAF50', fontSize: 14, fontWeight: '700' },
   shareBtn: {
     width: 44,
