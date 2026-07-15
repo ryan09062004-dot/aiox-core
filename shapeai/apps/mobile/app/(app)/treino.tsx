@@ -162,10 +162,10 @@ export default function TreinoTab() {
   const currentWeek = weeks[selectedWeek]
   const displaySessions = applyWorkoutMode(currentWeek?.sessions ?? [], workoutMode)
 
-  // Semanas 2+ são fechadas. Na semana 1, o usuário free vê apenas os dois primeiros
-  // treinos (segunda e terça) — o suficiente para provar que o plano é real.
+  // Semanas 2+ são fechadas. Na semana 1, o usuário free vê apenas o primeiro treino
+  // (segunda) — o suficiente para provar que o plano é real.
   const isWeekLocked = (index: number) => !isPro && index > 0
-  const FREE_SESSIONS_IN_WEEK_1 = 2
+  const FREE_SESSIONS_IN_WEEK_1 = 1
   const freeSessionCount =
     isPro || selectedWeek > 0 ? displaySessions.length : FREE_SESSIONS_IN_WEEK_1
   const lockedSessions = displaySessions.slice(freeSessionCount)
@@ -339,7 +339,7 @@ export default function TreinoTab() {
               {lockedSessions.length > 0 && (
                 <LockedSection
                   title={`Mais ${lockedSessions.length} treinos nesta semana`}
-                  description="Você tem os dois primeiros dias. O restante da semana e as semanas seguintes vêm no plano completo."
+                  description="Você tem o primeiro dia. O restante da semana e as semanas seguintes vêm no plano completo."
                   cta="Desbloquear meu plano"
                 >
                   {lockedSessions.slice(0, 2).map((session, i) => (
