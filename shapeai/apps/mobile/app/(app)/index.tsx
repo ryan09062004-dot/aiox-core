@@ -1,25 +1,20 @@
 import { useEffect, useState, useCallback, useRef } from 'react'
 import {
   View, Text, StyleSheet, TouchableOpacity,
-  ActivityIndicator, Image, ScrollView, TextInput, Share, Animated, Easing,
+  Image, ScrollView, Share, Animated, Easing,
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { LinearGradient } from 'expo-linear-gradient'
-import * as ImagePicker from 'expo-image-picker'
-import Svg, { Circle, Rect, Defs, LinearGradient as SvgGradient, Stop } from 'react-native-svg'
+import Svg, { Circle } from 'react-native-svg'
 import { router, useFocusEffect } from 'expo-router'
 import { Ionicons } from '@expo/vector-icons'
-import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import { useAuthStore } from '../../src/stores/auth.store'
 import { PHOTO_TIP_STORAGE_KEY } from './photo-tip'
 import { WorkoutShareCard } from '../../src/components/workout/WorkoutShareCard'
 import { getUserProfile } from '../../src/services/profile.service'
-import { BlurView } from 'expo-blur'
-import MaskedView from '@react-native-masked-view/masked-view'
 import { listAnalyses, getAnalysisResult } from '../../src/services/analysis.service'
-import { useSubscription } from '../../src/hooks/useSubscription'
-import { GOAL_LABEL, getScoreColor } from '@shapeai/shared'
+import { getScoreColor } from '@shapeai/shared'
 import type { AnalysisSummary, WorkoutSession, PrimaryGoal } from '@shapeai/shared'
 
 // ─── Frases motivacionais ─────────────────────────────────────────────────────
@@ -115,9 +110,6 @@ function estimateDuration(exercises: WorkoutSession['exercises']): number {
   const secs = exercises.reduce((acc, ex) => acc + ex.sets * (45 + ex.rest_seconds), 0)
   return Math.round(secs / 60)
 }
-function formatDate(iso: string) {
-  return new Date(iso).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit' })
-}
 function todayFullDate() {
   const s = new Date().toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' })
   return s.charAt(0).toUpperCase() + s.slice(1)
@@ -150,7 +142,6 @@ function Ring({ pct, size = 56 }: { pct: number; size?: number }) {
 
 export default function HomeScreen() {
   const insets = useSafeAreaInsets()
-  const { isPro } = useSubscription()
   const { session, isGuest } = useAuthStore()
   const [goal, setGoal] = useState<PrimaryGoal | null>(null)
   const [weight, setWeight] = useState<number | null>(null)
@@ -158,10 +149,7 @@ export default function HomeScreen() {
   const [futureSelfUrl, setFutureSelfUrl] = useState<string | null>(null)
   const [todayWorkout, setTodayWorkout] = useState<TodayWorkout | null>(null)
   const [planPct, setPlanPct] = useState(0)
-  const [avatarUri, setAvatarUri] = useState<string | null>(null)
   const [displayName, setDisplayName] = useState<string | null>(null)
-  const [editingName, setEditingName] = useState(false)
-  const [nameInput, setNameInput] = useState('')
   const [shareVisible, setShareVisible] = useState(false)
   const [planTotalWeeks, setPlanTotalWeeks] = useState(4)
   const [weekProgress, setWeekProgress] = useState<{ day: string; done: boolean; isToday: boolean }[]>([])
@@ -178,50 +166,11 @@ export default function HomeScreen() {
   }, [])
 
   useEffect(() => {
-    async function loadAvatar() {
-      const [stored, storedName] = await Promise.all([
-        AsyncStorage.getItem('user_avatar_uri'),
-        AsyncStorage.getItem('user_display_name'),
-      ])
-      if (stored) setAvatarUri(stored)
-      else {
-        const oauthAvatar = session?.user?.user_metadata?.avatar_url as string | undefined
-        if (oauthAvatar) setAvatarUri(oauthAvatar)
-      }
+    // Nome salvo pela tela de perfil — usado na saudação da Home.
+    AsyncStorage.getItem('user_display_name').then((storedName) => {
       if (storedName) setDisplayName(storedName)
-    }
-    loadAvatar()
-  }, [session])
-
-  async function saveName() {
-    const trimmed = nameInput.trim()
-    if (trimmed) {
-      await AsyncStorage.setItem('user_display_name', trimmed)
-      setDisplayName(trimmed)
-    }
-    setEditingName(false)
-  }
-
-  function startEditingName(currentName: string) {
-    setNameInput(currentName)
-    setEditingName(true)
-  }
-
-  async function pickAvatar() {
-    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync()
-    if (status !== 'granted') return
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: true,
-      aspect: [1, 1],
-      quality: 0.8,
     })
-    if (!result.canceled && result.assets[0]) {
-      const uri = result.assets[0].uri
-      await AsyncStorage.setItem('user_avatar_uri', uri)
-      setAvatarUri(uri)
-    }
-  }
+  }, [])
 
   useFocusEffect(useCallback(() => {
     async function load() {
@@ -309,7 +258,6 @@ export default function HomeScreen() {
   }
 
   const name = displayName ?? session?.user?.email?.split('@')[0] ?? 'atleta'
-  const initial = name.charAt(0).toUpperCase()
   const score = lastAnalysis?.scores?.overall_score ?? null
   const fat = lastAnalysis?.scores?.body_fat_estimate_pct ?? null
   const hasAnalysis = lastAnalysis != null && lastAnalysis !== undefined
@@ -579,85 +527,16 @@ const styles = StyleSheet.create({
   scroll: { flex: 1 },
   container: { paddingHorizontal: 20, paddingBottom: 48, gap: 20 },
 
-  // Glass Header
-  glassHeader: {
-    position: 'absolute',
-    top: 0, left: 0, right: 0,
-    paddingHorizontal: 20,
-    paddingBottom: 8,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: 'rgba(255,255,255,0.08)',
-  },
-  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  avatarRow: { flexDirection: 'row', alignItems: 'center', gap: 14 },
-  avatarRing: {
-    borderRadius: 27.5,
-    padding: 1.5,
-  },
-  avatar: {
-    width: 52, height: 52, borderRadius: 26,
-    backgroundColor: '#1B3A1B',
-    alignItems: 'center', justifyContent: 'center', overflow: 'hidden',
-  },
-  avatarImage: { width: 52, height: 52, borderRadius: 26 },
-  avatarText: { color: '#4CAF50', fontSize: 20, fontWeight: '800' },
-  greeting: { color: '#fff', fontSize: 17, fontWeight: '700' },
-  nameInput: {
-    color: '#fff', fontSize: 17, fontWeight: '700',
-    borderBottomWidth: 1, borderBottomColor: '#4CAF50',
-    paddingVertical: 0, minWidth: 80,
-  },
-  tagline: { color: '#666', fontSize: 12, marginTop: 3 },
-  badgeProGradient: {
-    borderRadius: 12,
-    padding: 1,
-  },
-  badgePro: {
-    paddingHorizontal: 11, paddingVertical: 5, borderRadius: 11,
-    backgroundColor: '#0A0A0A',
-  },
-  badgeProText: { color: '#fff', fontSize: 12, fontWeight: '800', letterSpacing: 1 },
-
   // Hero
   heroWrapper: {
     paddingTop: 28,
     paddingBottom: 24,
   },
-  heroImageWrapper: {
-    width: '120%',
-    height: 380,
-    overflow: 'hidden',
-    marginHorizontal: -20,
-    marginBottom: 4,
-  },
-  heroImage: {
-    ...StyleSheet.absoluteFillObject,
-    width: '100%',
-    height: '100%',
-  },
-  heroFadeBottom: {
-    position: 'absolute',
-    bottom: 0, left: 0, right: 0,
-    height: '65%',
-  },
-  heroTextBlock: {
-    position: 'absolute',
-    bottom: 20, left: 20, right: 20,
-  },
   heroTitle: { color: '#fff', fontSize: 32, fontWeight: '800', lineHeight: 40, marginBottom: 10 },
   heroHighlight: { color: '#4CAF50' },
   heroSub: { color: '#888', fontSize: 15, lineHeight: 22, maxWidth: 320 },
 
-  // Eval card
-  evalCard: {
-    backgroundColor: '#111', borderRadius: 18,
-    padding: 16, gap: 14,
-    borderWidth: 1, borderColor: '#1E1E1E',
-  },
-  evalBody: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  evalText: { flex: 1 },
-  evalTitle: { color: '#fff', fontSize: 16, fontWeight: '700' },
-  evalSub: { color: '#555', fontSize: 12, marginTop: 2 },
+  // CTA de avaliação (estado sem análise)
   evalBtn: {
     backgroundColor: '#4CAF50', borderRadius: 12,
     paddingVertical: 13, flexDirection: 'row',
@@ -673,12 +552,7 @@ const styles = StyleSheet.create({
     borderWidth: 1, borderColor: '#1E1E1E',
     padding: 18, gap: 10,
   },
-  firstStepHeader: {
-    flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 2,
-  },
-  firstStepTitle: { color: '#fff', fontSize: 16, fontWeight: '700' },
   firstStepItem: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  firstStepBullet: { color: '#4CAF50', fontSize: 11, fontWeight: '800' },
   firstStepText: { color: '#888', fontSize: 13 },
 
   // Cabeçalho inline
@@ -811,78 +685,10 @@ const styles = StyleSheet.create({
   },
   shortcutText: { color: '#ccc', fontSize: 14, fontWeight: '600' },
 
-  // Metrics
-  metricsRow: {
-    flexDirection: 'row',
-    paddingVertical: 4,
-  },
-  metricBlock: { flex: 1, alignItems: 'center', gap: 4 },
-  metricDivider: { width: 1, backgroundColor: '#1E1E1E' },
-  metricValue: { color: '#fff', fontSize: 20, fontWeight: '800' },
-  metricLabel: { color: '#444', fontSize: 11, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.3 },
-
-  // Plan card
-  planCard: {
-    backgroundColor: '#111', borderRadius: 18,
-    padding: 18, gap: 14,
-    borderWidth: 1, borderColor: '#1E1E1E',
-  },
-  planHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  planLabel: { color: '#444', fontSize: 11, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.5 },
-  planLink: { color: '#4CAF50', fontSize: 13, fontWeight: '600' },
-  planBody: { flexDirection: 'row', alignItems: 'center', gap: 16 },
-  planInfo: { flex: 1, gap: 6 },
-  planFocus: { color: '#fff', fontSize: 20, fontWeight: '800' },
-  planMeta: { color: '#555', fontSize: 12 },
-  planDoneBadge: {
-    alignSelf: 'flex-start',
-    backgroundColor: '#1B3A1B', borderRadius: 8,
-    paddingHorizontal: 10, paddingVertical: 4,
-    borderWidth: 1, borderColor: '#4CAF50',
-  },
-  planDoneText: { color: '#4CAF50', fontSize: 12, fontWeight: '700' },
   planRing: { alignItems: 'center', justifyContent: 'center' },
   planPct: {
     position: 'absolute',
     color: '#fff', fontSize: 12, fontWeight: '800',
-  },
-
-  exercisePreview: {
-    borderTopWidth: 1,
-    borderTopColor: '#1A1A1A',
-    paddingTop: 12,
-    gap: 8,
-  },
-  exerciseRow: { flexDirection: 'row', alignItems: 'center' },
-  exerciseName: { flex: 1, color: '#666', fontSize: 13 },
-  exerciseSets: { color: '#444', fontSize: 12 },
-  exerciseMore: { color: '#333', fontSize: 12, marginTop: 2 },
-
-  completedBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    borderRadius: 12,
-    paddingVertical: 13,
-    borderWidth: 1,
-    borderColor: '#2A2A2A',
-    backgroundColor: '#1A1A1A',
-  },
-  completedBtnDone: {
-    borderColor: '#2A2A2A',
-    backgroundColor: '#1A1A1A',
-  },
-  completedBtnText: { color: '#888', fontSize: 14, fontWeight: '600' },
-  completedBtnTextDone: { color: '#4CAF50' },
-
-  planFooterRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    borderTopWidth: 1,
-    borderTopColor: '#1A1A1A',
-    paddingTop: 12,
   },
 
   shareWorkoutBtn: {
@@ -893,25 +699,6 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
   },
   shareWorkoutText: { color: '#aaa', fontSize: 13, fontWeight: '600' },
-
-  restText: { color: '#555', fontSize: 14, lineHeight: 22 },
-
-  headerRight: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  gearBtn: { padding: 4 },
-
-  nutritionShortcut: {
-    flexDirection: 'row', alignItems: 'center', gap: 12,
-    backgroundColor: '#111', borderRadius: 16,
-    padding: 16, borderWidth: 1, borderColor: '#1E1E1E',
-  },
-  nutritionIcon: {
-    width: 40, height: 40, borderRadius: 12,
-    backgroundColor: '#0E1E0E', borderWidth: 1, borderColor: '#254025',
-    alignItems: 'center', justifyContent: 'center',
-  },
-  nutritionText: { flex: 1 },
-  nutritionTitle: { color: '#fff', fontSize: 15, fontWeight: '700' },
-  nutritionSub: { color: '#555', fontSize: 12, marginTop: 2 },
 })
 
 const qStyles = StyleSheet.create({

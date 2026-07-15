@@ -508,6 +508,13 @@ export default function MealPlanScreen() {
                   </LockedSection>
                 </>
               )}
+
+              {meals.length > 0 && (
+                <View style={styles.moreMealsNote}>
+                  <Ionicons name="restaurant-outline" size={14} color="#4CAF50" />
+                  <Text style={styles.moreMealsText}>Mais 98 refeições disponíveis</Text>
+                </View>
+              )}
             </>
           )}
         </ScrollView>
@@ -694,6 +701,14 @@ const styles = StyleSheet.create({
   },
   generateBtnText: { color: '#0A0A0A', fontSize: 15, fontWeight: '700' },
   errorText: { color: '#EF5350', fontSize: 14, textAlign: 'center' },
+  moreMealsNote: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 8,
+  },
+  moreMealsText: { color: '#666', fontSize: 13, fontWeight: '500' },
 
   modalOverlay: {
     flex: 1, backgroundColor: 'rgba(0,0,0,0.75)',
