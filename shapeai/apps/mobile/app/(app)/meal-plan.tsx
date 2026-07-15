@@ -498,7 +498,7 @@ export default function MealPlanScreen() {
                       plano é real e específico. O cardápio completo é o que ela compra. */}
                   <MealCard meal={meals[0]} />
                   <LockedSection
-                    title={`Mais ${meals.length - 1} refeições no seu dia`}
+                    title="Mais 98 refeições no seu dia"
                     description="Seu cardápio completo, com porções, macros por refeição e opções de troca."
                     cta="Desbloquear meu cardápio"
                   >
@@ -507,12 +507,6 @@ export default function MealPlanScreen() {
                     ))}
                   </LockedSection>
                 </>
-              )}
-
-              {meals.length > 0 && (
-                <View style={styles.moreMealsNote}>
-                  <Text style={styles.moreMealsText}>+100 refeições disponíveis no app</Text>
-                </View>
               )}
             </>
           )}
@@ -700,14 +694,6 @@ const styles = StyleSheet.create({
   },
   generateBtnText: { color: '#0A0A0A', fontSize: 15, fontWeight: '700' },
   errorText: { color: '#EF5350', fontSize: 14, textAlign: 'center' },
-  moreMealsNote: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-    paddingVertical: 8,
-  },
-  moreMealsText: { color: '#666', fontSize: 13, fontWeight: '500' },
 
   modalOverlay: {
     flex: 1, backgroundColor: 'rgba(0,0,0,0.75)',
