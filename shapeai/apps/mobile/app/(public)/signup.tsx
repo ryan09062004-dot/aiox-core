@@ -40,7 +40,7 @@ const READY_ITEMS = [
   'Sua análise corporal completa',
   'Seu plano de treino personalizado',
   'Seu plano alimentar',
-  'Sua projeção de resultado',
+  'Sua imagem de projeção',
 ]
 
 export default function FunnelSignupScreen() {
@@ -128,7 +128,7 @@ export default function FunnelSignupScreen() {
       <ScrollView contentContainerStyle={styles.body} keyboardShouldPersistTaps="handled">
         <View style={styles.badge}>
           <Ionicons name="checkmark-circle" size={16} color="#4CAF50" />
-          <Text style={styles.badgeText}>Análise pronta para gerar</Text>
+          <Text style={styles.badgeText}>Estamos quase lá</Text>
         </View>
 
         <Text style={styles.title}>Salve seu resultado</Text>
@@ -178,7 +178,7 @@ export default function FunnelSignupScreen() {
           {submitting ? (
             <ActivityIndicator color="#fff" />
           ) : (
-            <Text style={styles.buttonText}>Ver meu resultado</Text>
+            <Text style={styles.buttonText}>Criar minha conta</Text>
           )}
         </TouchableOpacity>
 

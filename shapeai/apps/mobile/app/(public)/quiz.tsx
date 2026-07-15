@@ -25,7 +25,7 @@ const PRIVACY_POINTS = [
   {
     icon: 'lock-closed' as const,
     title: 'Só você vê sua foto',
-    text: 'Ela é usada exclusivamente para gerar a sua análise. Nunca é publicada, compartilhada ou mostrada a outra pessoa.',
+    text: 'Ela é usada exclusivamente para gerar a sua análise.',
   },
   {
     icon: 'trash' as const,

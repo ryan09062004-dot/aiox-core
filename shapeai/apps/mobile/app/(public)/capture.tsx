@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react'
-import { View, Text, StyleSheet, TouchableOpacity, Image, Modal, Pressable } from 'react-native'
+import { View, Text, StyleSheet, TouchableOpacity, Image } from 'react-native'
 import { CameraView, CameraType, useCameraPermissions } from 'expo-camera'
 import * as ImagePicker from 'expo-image-picker'
 import { Ionicons } from '@expo/vector-icons'
@@ -7,32 +7,23 @@ import { router } from 'expo-router'
 import { HumanSilhouette } from '../../src/components/camera/HumanSilhouette'
 import { useOnboardingStore } from '../../src/stores/onboarding.store'
 
-type CaptureStep = 'front' | 'back'
 type ScreenState = 'camera' | 'preview'
 
-const STEP_CONFIG: Record<CaptureStep, { label: string; instruction: string }> = {
-  front: {
-    label: 'Foto de frente',
-    instruction: 'Fique de frente, braços levemente afastados',
-  },
-  back: {
-    label: 'Foto de costas (opcional)',
-    instruction: 'Vire de costas, braços levemente afastados',
-  },
+// Funil captura apenas a foto de frente.
+const config = {
+  label: 'Foto de frente',
+  instruction: 'Fique de frente, braços levemente afastados',
 }
 
 export default function CaptureScreen() {
   const setPhotos = useOnboardingStore((s) => s.setPhotos)
   const [permission, requestPermission] = useCameraPermissions()
-  const [step, setStep] = useState<CaptureStep>('front')
   const [screenState, setScreenState] = useState<ScreenState>('camera')
-  const [frontPhotoUri, setFrontPhotoUri] = useState<string | null>(null)
   const [previewUri, setPreviewUri] = useState<string | null>(null)
-  const [confirmSkip, setConfirmSkip] = useState(false)
   const cameraRef = useRef<CameraView>(null)
 
-  const goToSignup = (front: string, back: string | null) => {
-    setPhotos(front, back ?? '')
+  const goToSignup = (front: string) => {
+    setPhotos(front, null)
     router.push('/(public)/signup')
   }
 
@@ -77,33 +68,17 @@ export default function CaptureScreen() {
     setScreenState('camera')
   }
 
+  // Só a foto de frente: ao confirmar, segue direto para o cadastro.
   const handleConfirm = () => {
     if (!previewUri) return
-
-    if (step === 'front') {
-      setFrontPhotoUri(previewUri)
-      setPreviewUri(null)
-      setStep('back')
-      setScreenState('camera')
-      return
-    }
-
-    if (!frontPhotoUri) return
-    goToSignup(frontPhotoUri, previewUri)
-  }
-
-  // Alert.alert não dispara callbacks de botão no React Native Web — no PWA o "Pular"
-  // ficaria inerte. Um Modal funciona nas duas plataformas.
-  const handleSkipBack = () => {
-    if (!frontPhotoUri) return
-    setConfirmSkip(true)
+    goToSignup(previewUri)
   }
 
   if (screenState === 'preview' && previewUri) {
     return (
       <View style={styles.container}>
         <View style={styles.topBar}>
-          <Text style={styles.stepLabel}>{STEP_CONFIG[step].label}</Text>
+          <Text style={styles.stepLabel}>{config.label}</Text>
         </View>
         <Image source={{ uri: previewUri }} style={styles.preview} resizeMode="cover" />
         <View style={styles.previewButtons}>
@@ -112,70 +87,27 @@ export default function CaptureScreen() {
             <Text style={styles.retakeText}>Refazer</Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.confirmButton} onPress={handleConfirm}>
-            <Text style={styles.confirmText}>
-              {step === 'back' ? 'Gerar minha análise' : 'Confirmar'}
-            </Text>
+            <Text style={styles.confirmText}>Gerar minha análise</Text>
           </TouchableOpacity>
         </View>
       </View>
     )
   }
 
-  const config = STEP_CONFIG[step]
-
   return (
     <View style={styles.container}>
-      <Modal
-        visible={confirmSkip}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setConfirmSkip(false)}
-      >
-        <Pressable style={styles.modalOverlay} onPress={() => setConfirmSkip(false)}>
-          <Pressable style={styles.modalCard} onPress={(e) => e.stopPropagation()}>
-            <Text style={styles.modalTitle}>Pular a foto de costas?</Text>
-            <Text style={styles.modalText}>
-              Sua análise fica pronta do mesmo jeito, mas dorsais, trapézio e glúteos ficam
-              estimados em vez de avaliados. Você pode completar depois.
-            </Text>
-            <TouchableOpacity style={styles.modalPrimary} onPress={() => setConfirmSkip(false)}>
-              <Text style={styles.modalPrimaryText}>Vou tirar</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.modalSecondary}
-              onPress={() => {
-                setConfirmSkip(false)
-                if (frontPhotoUri) goToSignup(frontPhotoUri, null)
-              }}
-            >
-              <Text style={styles.modalSecondaryText}>Pular mesmo assim</Text>
-            </TouchableOpacity>
-          </Pressable>
-        </Pressable>
-      </Modal>
-
       <View style={styles.header}>
         <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
           <Ionicons name="chevron-back" size={22} color="#fff" />
         </TouchableOpacity>
         <View style={styles.stepInfo}>
           <Text style={styles.stepText}>{config.label}</Text>
-          <View style={styles.stepDots}>
-            <View style={[styles.dot, step === 'front' ? styles.dotActive : styles.dotDone]} />
-            <View style={[styles.dot, step === 'back' && styles.dotActive]} />
-          </View>
         </View>
-        {step === 'back' ? (
-          <TouchableOpacity onPress={handleSkipBack}>
-            <Text style={styles.skipText}>Pular</Text>
-          </TouchableOpacity>
-        ) : (
-          <View style={{ width: 44 }} />
-        )}
+        <View style={{ width: 44 }} />
       </View>
 
       <CameraView ref={cameraRef} style={styles.camera} facing={'back' as CameraType}>
-        <HumanSilhouette facing={step} />
+        <HumanSilhouette facing="front" />
         <Text style={styles.instruction}>{config.instruction}</Text>
       </CameraView>
 
@@ -197,32 +129,6 @@ export default function CaptureScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#000' },
-
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.75)',
-    justifyContent: 'center',
-    padding: 28,
-  },
-  modalCard: {
-    backgroundColor: '#151515',
-    borderRadius: 18,
-    borderWidth: 1,
-    borderColor: '#242424',
-    padding: 22,
-    gap: 10,
-  },
-  modalTitle: { color: '#fff', fontSize: 18, fontWeight: '700' },
-  modalText: { color: '#999', fontSize: 14, lineHeight: 20, marginBottom: 6 },
-  modalPrimary: {
-    backgroundColor: '#4CAF50',
-    borderRadius: 12,
-    padding: 15,
-    alignItems: 'center',
-  },
-  modalPrimaryText: { color: '#fff', fontSize: 15, fontWeight: '700' },
-  modalSecondary: { padding: 12, alignItems: 'center' },
-  modalSecondaryText: { color: '#888', fontSize: 14 },
 
   permissionContainer: {
     flex: 1,
@@ -254,11 +160,6 @@ const styles = StyleSheet.create({
   },
   stepInfo: { flex: 1, alignItems: 'center' },
   stepText: { color: '#fff', fontSize: 15, fontWeight: '600' },
-  stepDots: { flexDirection: 'row', gap: 6, marginTop: 6 },
-  dot: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#333' },
-  dotActive: { backgroundColor: '#4CAF50' },
-  dotDone: { backgroundColor: '#2E7D32' },
-  skipText: { color: '#888', fontSize: 14, fontWeight: '600', width: 44, textAlign: 'right' },
 
   camera: { flex: 1 },
   instruction: {
