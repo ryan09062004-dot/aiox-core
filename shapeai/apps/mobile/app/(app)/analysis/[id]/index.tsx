@@ -1,8 +1,8 @@
 import { useEffect, useState, useRef } from 'react'
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native'
 import { useLocalSearchParams, router } from 'expo-router'
-import { pollAnalysis } from '../../../src/services/analysis.service'
-import { generateMealPlan } from '../../../src/services/meal-plan.service'
+import { pollAnalysis } from '../../../../src/services/analysis.service'
+import { generateMealPlan } from '../../../../src/services/meal-plan.service'
 
 const STEPS = [
   'IA analisando suas fotos...',
