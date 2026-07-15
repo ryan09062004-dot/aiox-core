@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react'
-import { View, Text, StyleSheet, TouchableOpacity, Image, ActivityIndicator } from 'react-native'
+import { View, Text, StyleSheet, TouchableOpacity, Image, ActivityIndicator, Platform } from 'react-native'
 import { CameraView, CameraType, useCameraPermissions } from 'expo-camera'
 import * as ImagePicker from 'expo-image-picker'
 import { Ionicons } from '@expo/vector-icons'
@@ -20,23 +20,28 @@ export default function CaptureScreen() {
   const [permission, requestPermission] = useCameraPermissions()
   const [screenState, setScreenState] = useState<ScreenState>('camera')
   const [previewUri, setPreviewUri] = useState<string | null>(null)
-  const [imgLoading, setImgLoading] = useState(false)
+  const [processing, setProcessing] = useState(false)
   const cameraRef = useRef<CameraView>(null)
-  const loadTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  // Mostra o loading e agenda uma trava: se os eventos do <Image> não dispararem
-  // (comum no web), o spinner some sozinho depois de alguns segundos.
-  const showPreview = (uri: string) => {
-    if (loadTimer.current) clearTimeout(loadTimer.current)
-    setImgLoading(true)
+  // O congelamento acontece ENQUANTO a imagem escolhida é decodificada — antes do preview
+  // aparecer. No web, os eventos onLoad do <Image> são inconsistentes; então pré-carregamos
+  // a imagem pela API do navegador (que avisa com precisão) e só então mostramos o preview.
+  // Um overlay cobre essa espera. Trava de 5s garante que nunca fica preso.
+  const showPreview = async (uri: string) => {
+    setProcessing(true)
+    if (Platform.OS === 'web' && typeof window !== 'undefined') {
+      await new Promise<void>((resolve) => {
+        const done = () => resolve()
+        const timer = setTimeout(done, 5000)
+        const im = new window.Image()
+        im.onload = () => { clearTimeout(timer); done() }
+        im.onerror = () => { clearTimeout(timer); done() }
+        im.src = uri
+      })
+    }
     setPreviewUri(uri)
     setScreenState('preview')
-    loadTimer.current = setTimeout(() => setImgLoading(false), 4000)
-  }
-
-  const stopLoading = () => {
-    if (loadTimer.current) clearTimeout(loadTimer.current)
-    setImgLoading(false)
+    setProcessing(false)
   }
 
   const goToSignup = (front: string) => {
@@ -97,31 +102,13 @@ export default function CaptureScreen() {
         <View style={styles.topBar}>
           <Text style={styles.stepLabel}>{config.label}</Text>
         </View>
-        <View style={styles.preview}>
-          <Image
-            source={{ uri: previewUri }}
-            style={StyleSheet.absoluteFill}
-            resizeMode="cover"
-            onLoad={stopLoading}
-            onLoadEnd={stopLoading}
-            onError={stopLoading}
-          />
-          {imgLoading && (
-            <View style={styles.previewLoading}>
-              <ActivityIndicator color="#4CAF50" size="large" />
-            </View>
-          )}
-        </View>
+        <Image source={{ uri: previewUri }} style={styles.preview} resizeMode="cover" />
         <View style={styles.previewButtons}>
           <TouchableOpacity style={styles.retakeButton} onPress={handleRetake}>
             <Ionicons name="refresh" size={18} color="#fff" />
             <Text style={styles.retakeText}>Refazer</Text>
           </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.confirmButton, imgLoading && { opacity: 0.5 }]}
-            onPress={handleConfirm}
-            disabled={imgLoading}
-          >
+          <TouchableOpacity style={styles.confirmButton} onPress={handleConfirm}>
             <Text style={styles.confirmText}>Gerar minha análise</Text>
           </TouchableOpacity>
         </View>
@@ -158,6 +145,13 @@ export default function CaptureScreen() {
 
         <View style={{ width: 70 }} />
       </View>
+
+      {processing && (
+        <View style={styles.processingOverlay}>
+          <ActivityIndicator color="#4CAF50" size="large" />
+          <Text style={styles.processingText}>Carregando sua foto…</Text>
+        </View>
+      )}
     </View>
   )
 }
@@ -236,7 +230,14 @@ const styles = StyleSheet.create({
   topBar: { paddingTop: 56, paddingBottom: 12, alignItems: 'center', backgroundColor: '#000' },
   stepLabel: { color: '#fff', fontSize: 17, fontWeight: '600' },
   preview: { flex: 1, width: '100%', backgroundColor: '#000' },
-  previewLoading: { ...StyleSheet.absoluteFillObject, alignItems: 'center', justifyContent: 'center' },
+  processingOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.8)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 14,
+  },
+  processingText: { color: '#ccc', fontSize: 14 },
   previewButtons: { flexDirection: 'row', padding: 20, gap: 12, backgroundColor: '#000' },
   retakeButton: {
     flex: 1,
