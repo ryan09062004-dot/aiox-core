@@ -22,6 +22,22 @@ export default function CaptureScreen() {
   const [previewUri, setPreviewUri] = useState<string | null>(null)
   const [imgLoading, setImgLoading] = useState(false)
   const cameraRef = useRef<CameraView>(null)
+  const loadTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  // Mostra o loading e agenda uma trava: se os eventos do <Image> não dispararem
+  // (comum no web), o spinner some sozinho depois de alguns segundos.
+  const showPreview = (uri: string) => {
+    if (loadTimer.current) clearTimeout(loadTimer.current)
+    setImgLoading(true)
+    setPreviewUri(uri)
+    setScreenState('preview')
+    loadTimer.current = setTimeout(() => setImgLoading(false), 4000)
+  }
+
+  const stopLoading = () => {
+    if (loadTimer.current) clearTimeout(loadTimer.current)
+    setImgLoading(false)
+  }
 
   const goToSignup = (front: string) => {
     setPhotos(front, null)
@@ -51,9 +67,7 @@ export default function CaptureScreen() {
     // redimensiona no servidor, então 0.6 não tira nada útil.
     const photo = await cameraRef.current.takePictureAsync({ quality: 0.6, base64: false })
     if (!photo) return
-    setImgLoading(true)
-    setPreviewUri(photo.uri)
-    setScreenState('preview')
+    showPreview(photo.uri)
   }
 
   const handlePickFromGallery = async () => {
@@ -63,9 +77,7 @@ export default function CaptureScreen() {
       quality: 0.6,
     })
     if (result.canceled || !result.assets[0]) return
-    setImgLoading(true)
-    setPreviewUri(result.assets[0].uri)
-    setScreenState('preview')
+    showPreview(result.assets[0].uri)
   }
 
   const handleRetake = () => {
@@ -90,7 +102,9 @@ export default function CaptureScreen() {
             source={{ uri: previewUri }}
             style={StyleSheet.absoluteFill}
             resizeMode="cover"
-            onLoadEnd={() => setImgLoading(false)}
+            onLoad={stopLoading}
+            onLoadEnd={stopLoading}
+            onError={stopLoading}
           />
           {imgLoading && (
             <View style={styles.previewLoading}>
