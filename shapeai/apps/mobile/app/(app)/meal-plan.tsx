@@ -512,7 +512,7 @@ export default function MealPlanScreen() {
               {meals.length > 0 && (
                 <View style={styles.moreMealsNote}>
                   <Ionicons name="restaurant-outline" size={14} color="#4CAF50" />
-                  <Text style={styles.moreMealsText}>Mais 98 refeições disponíveis</Text>
+                  <Text style={styles.moreMealsText}>+100 refeições disponíveis no app</Text>
                 </View>
               )}
             </>
