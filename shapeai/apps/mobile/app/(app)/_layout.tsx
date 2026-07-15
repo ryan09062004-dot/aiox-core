@@ -34,23 +34,24 @@ export default function AppLayout() {
           backgroundColor: '#0A0A0A',
           borderTopColor: '#1A1A1A',
           borderTopWidth: 1,
-          paddingTop: 6,
-          paddingBottom: Math.max(insets.bottom, 8),
-          height: 62 + insets.bottom,
+          paddingTop: 8,
+          paddingBottom: Math.max(insets.bottom, 10),
+          height: 70 + insets.bottom,
         },
         tabBarActiveTintColor: '#4CAF50',
         tabBarInactiveTintColor: '#555',
-        // 5 abas e rótulos longos ("Avaliações", "Nutrição"): a 11px o texto era cortado
-        // em telas estreitas. Fonte menor, sem escala do sistema e sem padding lateral
-        // para o rótulo caber inteiro.
+        // Rótulos com acentos e cedilha ("Avaliações", "Nutrição") precisam de altura de
+        // linha folgada — sem isso os acentos e o "ç" ficam cortados na borda inferior.
+        // (includeFontPadding:false corta justamente essas marcas no Android, por isso não
+        // é usado aqui.)
         tabBarLabelStyle: {
           fontSize: 10,
+          lineHeight: 14,
           fontWeight: '600',
-          marginTop: 2,
-          includeFontPadding: false,
+          marginTop: 3,
         },
         tabBarAllowFontScaling: false,
-        tabBarItemStyle: { paddingHorizontal: 0 },
+        tabBarItemStyle: { paddingHorizontal: 2, paddingVertical: 2 },
       }}
     >
       <Tabs.Screen
