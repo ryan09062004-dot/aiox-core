@@ -106,8 +106,9 @@ function ScoreRing({ score, color }: { score: number; color: string }) {
           origin={`${size / 2}, ${size / 2}`}
         />
       </Svg>
-      <Text style={[styles.ringScore, { color }]}>{displayScore}</Text>
-      <Text style={styles.ringLabel}>score</Text>
+      {/* Mesma tipografia do gauge do relatório: número branco e rótulo "PTS". */}
+      <Text style={styles.ringScore}>{displayScore}</Text>
+      <Text style={styles.ringLabel}>PTS</Text>
     </View>
   )
 }
@@ -276,8 +277,8 @@ const styles = StyleSheet.create({
   statLabel: { fontSize: 12, color: '#555', marginTop: 2 },
 
   // Ring
-  ringScore: { fontSize: 28, fontWeight: '800' },
-  ringLabel: { fontSize: 11, color: '#555', marginTop: 2 },
+  ringScore: { fontSize: 32, fontWeight: 'bold', color: '#fff' },
+  ringLabel: { fontSize: 10, color: '#555', fontWeight: '600', letterSpacing: 2, marginTop: 1 },
 
 
   // Card compacto

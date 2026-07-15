@@ -40,7 +40,17 @@ export default function AppLayout() {
         },
         tabBarActiveTintColor: '#4CAF50',
         tabBarInactiveTintColor: '#555',
-        tabBarLabelStyle: { fontSize: 11, fontWeight: '600', marginTop: 2 },
+        // 5 abas e rótulos longos ("Avaliações", "Nutrição"): a 11px o texto era cortado
+        // em telas estreitas. Fonte menor, sem escala do sistema e sem padding lateral
+        // para o rótulo caber inteiro.
+        tabBarLabelStyle: {
+          fontSize: 10,
+          fontWeight: '600',
+          marginTop: 2,
+          includeFontPadding: false,
+        },
+        tabBarAllowFontScaling: false,
+        tabBarItemStyle: { paddingHorizontal: 0 },
       }}
     >
       <Tabs.Screen

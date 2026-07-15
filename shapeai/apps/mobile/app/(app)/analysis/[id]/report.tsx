@@ -16,6 +16,7 @@ import {
 import * as FileSystem from 'expo-file-system'
 import * as MediaLibrary from 'expo-media-library'
 import { LinearGradient } from 'expo-linear-gradient'
+import { Ionicons } from '@expo/vector-icons'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useLocalSearchParams, router } from 'expo-router'
 import Svg, { Circle, Text as SvgText } from 'react-native-svg'
@@ -184,11 +185,27 @@ function HeroCard({ score, date }: { score: number; date: string }) {
 }
 
 function AssessmentCard({ text }: { text: string }) {
+  const [expanded, setExpanded] = useState(false)
+
   return (
-    <View style={s.assessmentCard}>
+    <TouchableOpacity
+      style={s.assessmentCard}
+      onPress={() => setExpanded((v) => !v)}
+      activeOpacity={0.85}
+    >
       <Text style={s.assessmentLabel}>Avaliação do especialista</Text>
-      <Text style={s.assessmentText}>{text}</Text>
-    </View>
+      <Text style={s.assessmentText} numberOfLines={expanded ? undefined : 3}>
+        {text}
+      </Text>
+      <View style={s.assessmentMore}>
+        <Text style={s.assessmentMoreText}>{expanded ? 'Ver menos' : 'Ver mais'}</Text>
+        <Ionicons
+          name={expanded ? 'chevron-up' : 'chevron-down'}
+          size={13}
+          color="#4CAF50"
+        />
+      </View>
+    </TouchableOpacity>
   )
 }
 
@@ -589,6 +606,8 @@ const s = StyleSheet.create({
     letterSpacing: 1.5,
   },
   assessmentText: { color: '#ccc', fontSize: 15, lineHeight: 24 },
+  assessmentMore: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 10 },
+  assessmentMoreText: { color: '#4CAF50', fontSize: 13, fontWeight: '600' },
 
   // Compact body comp
   compactCard: {
