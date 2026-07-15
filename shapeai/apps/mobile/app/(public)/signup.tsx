@@ -12,8 +12,27 @@ import {
 } from 'react-native'
 import { router } from 'expo-router'
 import { Ionicons } from '@expo/vector-icons'
+import Svg, { Path, G, ClipPath, Defs } from 'react-native-svg'
 import { useAuthStore } from '../../src/stores/auth.store'
 import { useOnboardingStore } from '../../src/stores/onboarding.store'
+
+function GoogleIcon() {
+  return (
+    <Svg width={20} height={20} viewBox="0 0 48 48">
+      <Defs>
+        <ClipPath id="g-funnel">
+          <Path d="M44.5 20H24v8.5h11.8C34.7 33.9 30.1 37 24 37c-7.2 0-13-5.8-13-13s5.8-13 13-13c3.1 0 5.9 1.1 8.1 2.9l6.4-6.4C34.6 4.1 29.6 2 24 2 11.8 2 2 11.8 2 24s9.8 22 22 22c11 0 21-8 21-22 0-1.3-.2-2.7-.5-4z" />
+        </ClipPath>
+      </Defs>
+      <G clipPath="url(#g-funnel)">
+        <Path d="M0 37V11l17 13z" fill="#FBBC05" />
+        <Path d="M0 11l17 13 7-6.1L48 14V0H0z" fill="#EA4335" />
+        <Path d="M0 37l30-23 7.9 1L48 0v48H0z" fill="#34A853" />
+        <Path d="M48 48L17 24l-4-3 35-10z" fill="#4285F4" />
+      </G>
+    </Svg>
+  )
+}
 import { supabase } from '../../src/services/supabase.client'
 import { stashPhotos } from '../../src/services/photo-vault'
 
@@ -174,7 +193,7 @@ export default function FunnelSignupScreen() {
           disabled={submitting}
           onPress={handleGoogle}
         >
-          <Ionicons name="logo-google" size={18} color="#fff" />
+          <GoogleIcon />
           <Text style={styles.googleButtonText}>Continuar com Google</Text>
         </TouchableOpacity>
 
@@ -244,10 +263,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 8,
+    gap: 10,
     backgroundColor: '#1A1A1A',
     borderWidth: 1,
-    borderColor: '#2A2A2A',
+    borderColor: '#333',
     borderRadius: 14,
     padding: 16,
   },

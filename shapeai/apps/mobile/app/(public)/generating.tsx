@@ -21,7 +21,7 @@ const STAGES = [
   'Calculando seus scores musculares…',
   'Montando seu plano de treino…',
   'Calculando seus macros e sua dieta…',
-  'Gerando sua projeção de resultado…',
+  'Gerando sua projeção visual…',
 ]
 
 // 6 etapas × 6s = 36s, calibrado pelo tempo real medido do pipeline. A barra chega ao
