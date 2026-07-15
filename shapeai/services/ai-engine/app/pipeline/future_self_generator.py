@@ -9,6 +9,7 @@ logger = logging.getLogger(__name__)
 
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
 
+
 def _describe_body_goal(goal: str, fat_pct: float, sex: str) -> str:  # unused — kept for reference only
     """
     Returns contextual transformation description based on current body composition + goal.
@@ -278,26 +279,20 @@ def _describe_body_goal(goal: str, fat_pct: float, sex: str) -> str:  # unused �
 
 def _build_prompt_v2(sex: str) -> str:
     """
-    Alternative prompt: professional fitness demonstration aesthetic.
-    Less body-editing-focused, more aspirational/professional look.
+    Evolução física realista: corpo atlético e definido (não fisiculturista),
+    preservando identidade, pose, roupa e cenário da foto original.
     """
-    if sex.lower() in ("m", "male"):
-        attire = "appropriate athletic attire (shirtless for men)"
-    else:
-        attire = "appropriate athletic attire (sports bra for women)"
-
     return (
-        f"Transform this person's photo to show them as a professional fitness athlete "
-        f"in {attire} showcasing peak muscle definition. "
-        f"The result should look like a professional fitness demonstration photo — "
-        f"well-lit gym setting, the athlete in confident poses that highlight "
-        f"chest, shoulder, back, and arm musculature. "
-        f"The focus is entirely on muscle definition, fitness achievements, and proper athletic form. "
-        f"Maintain a professional, sports-focused aesthetic similar to bodybuilding competitions "
-        f"or fitness tutorials. "
-        f"Keep the person's identity, face (soft blur), skin tone, and background consistent with the original. "
-        f"Only transform the body composition — eliminate body fat, develop all muscle groups to a "
-        f"high level of definition and size. The result must look photorealistic and professional."
+        "Transforme a foto desta pessoa mostrando um corpo atlético, definido e "
+        "esteticamente trabalhado — sem gordura excessiva e com musculatura bem desenvolvida "
+        "em peito, ombros, costas, braços e abdômen, em um nível atlético, não de fisiculturista.\n\n"
+        "Mantenha a identidade da pessoa, o mesmo rosto, o mesmo tom de pele, a mesma roupa e o "
+        "mesmo cenário/ambiente da foto original (mesma iluminação, fundo e local).\n\n"
+        "A transformação deve afetar apenas a composição corporal (redução de gordura e definição "
+        "muscular equilibrada), preservando pose, enquadramento e todas as demais características da "
+        "imagem original.\n\n"
+        "O resultado deve ser fotorrealista e natural, como uma evolução física real da mesma pessoa, "
+        "e não uma pessoa diferente."
     )
 
 
@@ -372,6 +367,7 @@ def generate_future_self(
 ) -> bytes | None:
     """Generate future-self image via Gemini. Returns JPEG bytes or None on failure."""
     print(f"[future_self] called — img={len(front_bytes) if front_bytes else 0}B key_set={bool(GEMINI_API_KEY)}", flush=True)
+
     if not GEMINI_API_KEY:
         logger.warning("[future_self] GEMINI_API_KEY not set — skipping")
         print("[future_self] GEMINI_API_KEY not set — skipping", flush=True)

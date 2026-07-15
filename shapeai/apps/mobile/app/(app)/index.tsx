@@ -576,7 +576,7 @@ export default function HomeScreen() {
               'Plano de treino completo',
               'Plano alimentar liberado',
               'Feedback e avaliações ilimitadas',
-              'Conversas sem limite com o Personal',
+              'Chatbot sem limite',
             ].map((b) => (
               <View key={b} style={styles.subBenefitRow}>
                 <Ionicons name="checkmark-circle" size={18} color="#4CAF50" />
