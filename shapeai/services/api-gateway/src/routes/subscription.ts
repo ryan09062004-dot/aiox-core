@@ -4,6 +4,7 @@ import { requireAuth } from '../middleware/auth'
 import { getSubscriptionStatus } from '../services/subscription.service'
 import {
   buildCheckoutUrl,
+  CHECKOUT_VALUE_CENTS,
   extractEmail,
   extractTransactionId,
   generateIntentToken,
@@ -13,6 +14,7 @@ import {
   resolveExpiresAt,
   revokePro,
 } from '../services/cakto.service'
+import { sendPurchaseEvent } from '../services/meta-capi.service'
 
 interface RevenueCatEvent {
   type: string
@@ -44,7 +46,9 @@ export async function subscriptionRoutes(app: FastifyInstance) {
   // POST /subscription/checkout — cria a intent e devolve a URL da Cakto com o token.
   // O token é o que garante que o pagamento caia na conta certa mesmo que a pessoa
   // pague com um e-mail diferente do cadastro.
-  app.post<{ Body: { plan?: string } }>(
+  app.post<{
+    Body: { plan?: string; event_id?: string; fbp?: string; fbc?: string }
+  }>(
     '/subscription/checkout',
     { preHandler: requireAuth },
     async (request, reply) => {
@@ -67,9 +71,24 @@ export async function subscriptionRoutes(app: FastifyInstance) {
         return reply.status(503).send({ error: 'Checkout unavailable' })
       }
 
+      // Guarda os identificadores do Meta junto do token: eles não conseguem atravessar
+      // o salto de domínio para a Cakto sozinhos (cookie não passa), mas o token passa e
+      // os traz de volta no webhook, onde disparamos o Purchase server-side com dedupe.
+      // client_ip/user_agent são do request (melhoram a correspondência do evento).
       await pool.query(
-        `INSERT INTO checkout_intents (token, user_id, plan) VALUES ($1, $2, $3)`,
-        [token, userId, plan]
+        `INSERT INTO checkout_intents
+           (token, user_id, plan, fbp, fbc, event_id, client_ip, user_agent)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+        [
+          token,
+          userId,
+          plan,
+          request.body?.fbp ?? null,
+          request.body?.fbc ?? null,
+          request.body?.event_id ?? null,
+          request.ip,
+          request.headers['user-agent'] ?? null,
+        ]
       )
 
       return reply.send({ checkout_url: url })
@@ -122,6 +141,23 @@ export async function subscriptionRoutes(app: FastifyInstance) {
 
       if (isGrant) {
         await grantPro(pool, owner.userId, resolveExpiresAt(request.body, owner.plan))
+
+        // Purchase server-side no Meta — par do InitiateCheckout do navegador. Envolto em
+        // try/catch de propósito: uma falha de tracking NUNCA pode impedir a liberação do
+        // acesso pago que já foi concedido acima.
+        try {
+          await sendPurchaseEvent({
+            eventId: owner.tracking?.eventId ?? null,
+            email: extractEmail(request.body),
+            fbp: owner.tracking?.fbp ?? null,
+            fbc: owner.tracking?.fbc ?? null,
+            clientIp: owner.tracking?.clientIp ?? null,
+            userAgent: owner.tracking?.userAgent ?? null,
+            valueCents: CHECKOUT_VALUE_CENTS,
+          })
+        } catch (err) {
+          request.log.error({ err }, '[meta-capi] falha ao enviar Purchase')
+        }
       } else {
         await revokePro(pool, owner.userId)
       }

@@ -5,6 +5,20 @@ export type PlanId = 'monthly'
 
 export const PLAN_IDS: PlanId[] = ['monthly']
 
+// Valor da oferta em centavos, usado no evento Purchase da CAPI do Meta. Espelha o
+// preço exibido no paywall (R$ 29,90).
+export const CHECKOUT_VALUE_CENTS = 2990
+
+// Identificadores de rastreamento do Meta que viajam com o token de checkout e voltam
+// no webhook, para o Purchase server-side deduplicar com o InitiateCheckout do browser.
+export interface CheckoutTracking {
+  fbp: string | null
+  fbc: string | null
+  eventId: string | null
+  clientIp: string | null
+  userAgent: string | null
+}
+
 // Oferta única: mensal de R$ 29,90. A URL pode ser sobrescrita por ambiente, mas o
 // padrão é a oferta ativa na Cakto — é um link público de checkout, não um segredo.
 const DEFAULT_CHECKOUT_URL = 'https://pay.cakto.com.br/j73s7m2_940797'
@@ -120,30 +134,47 @@ export async function revokePro(pool: Pool, userId: string): Promise<void> {
 export async function resolvePaymentOwner(
   pool: Pool,
   body: unknown
-): Promise<{ userId: string; plan: PlanId | null } | null> {
+): Promise<{ userId: string; plan: PlanId | null; tracking: CheckoutTracking | null } | null> {
   const token = extractIntentToken(body)
   if (token) {
-    const { rows } = await pool.query<{ user_id: string; plan: string }>(
+    const { rows } = await pool.query<{
+      user_id: string
+      plan: string
+      fbp: string | null
+      fbc: string | null
+      event_id: string | null
+      client_ip: string | null
+      user_agent: string | null
+    }>(
       `UPDATE checkout_intents SET consumed_at = NOW()
        WHERE token = $1
-       RETURNING user_id, plan`,
+       RETURNING user_id, plan, fbp, fbc, event_id, client_ip, user_agent`,
       [token]
     )
     if (rows[0]) {
       return {
         userId: rows[0].user_id,
         plan: isPlanId(rows[0].plan) ? rows[0].plan : null,
+        tracking: {
+          fbp: rows[0].fbp,
+          fbc: rows[0].fbc,
+          eventId: rows[0].event_id,
+          clientIp: rows[0].client_ip,
+          userAgent: rows[0].user_agent,
+        },
       }
     }
   }
 
+  // Fallback por e-mail: pagamento sem token (ou token não encontrado). Sem intent, não
+  // há identificadores de tracking do Meta — o Purchase server-side sai sem dedupe.
   const email = extractEmail(body)
   if (email) {
     const { rows } = await pool.query<{ id: string }>(
       `SELECT id FROM users WHERE LOWER(email) = $1`,
       [email]
     )
-    if (rows[0]) return { userId: rows[0].id, plan: null }
+    if (rows[0]) return { userId: rows[0].id, plan: null, tracking: null }
   }
 
   return null

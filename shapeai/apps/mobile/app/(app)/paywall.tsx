@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import {
   View,
   Text,
@@ -12,13 +12,16 @@ import {
 } from 'react-native'
 import { router } from 'expo-router'
 import { Ionicons } from '@expo/vector-icons'
+import { LinearGradient } from 'expo-linear-gradient'
 import { claimPayment, createCheckout, type PlanId } from '../../src/services/subscription.service'
 import { useSubscription } from '../../src/hooks/useSubscription'
+import { track } from '../../src/services/analytics'
+import { trackInitiateCheckout } from '../../src/services/meta-pixel'
 
 const PLAN: PlanId = 'monthly'
+const PLAN_PRICE_BRL = 29.9
 
 const BENEFITS = [
-  'Raio-X corporal detalhado por grupo muscular',
   'Plano de treino completo, semana a semana',
   'Plano alimentar com macros e cardápio',
   'Novas análises para acompanhar sua evolução',
@@ -33,13 +36,24 @@ export default function PaywallScreen() {
   const [claimEmail, setClaimEmail] = useState('')
   const [message, setMessage] = useState<{ kind: 'error' | 'success'; text: string } | null>(null)
 
+  useEffect(() => {
+    track('funnel_12_paywall_view')
+  }, [])
+
   // Alert.alert não renderiza botões no React Native Web — no PWA as mensagens ficariam
   // invisíveis. O feedback é exibido na própria tela.
   const handleSubscribe = async () => {
+    // Marcado no clique, e não depois do `createCheckout`, por dois motivos: é o clique
+    // que representa a intenção de compra, e o Clarity envia em lote — disparar antes da
+    // ida ao servidor dá tempo de o evento sair antes de a página navegar para a Cakto.
+    track('funnel_13_checkout_click')
+    // InitiateCheckout do Meta no mesmo clique. Devolve event_id + _fbp/_fbc, que seguem
+    // com o token de checkout até o webhook para o Purchase server-side deduplicar.
+    const tracking = trackInitiateCheckout(PLAN_PRICE_BRL)
     setLoading(true)
     setMessage(null)
     try {
-      const url = await createCheckout(PLAN)
+      const url = await createCheckout(PLAN, tracking)
 
       // Na web, Linking.openURL vira window.open — e como aqui já passamos por um await,
       // o navegador não considera mais isso um clique do usuário e bloqueia o popup.
@@ -87,7 +101,7 @@ export default function PaywallScreen() {
         <Ionicons name="close" size={24} color="#888" />
       </TouchableOpacity>
 
-      <Text style={styles.title}>Seu plano está pronto</Text>
+      <Text style={styles.title}>Comece hoje mesmo!</Text>
       <Text style={styles.subtitle}>
         Desbloqueie o treino e a dieta que a gente montou a partir da sua análise.
       </Text>
@@ -101,15 +115,18 @@ export default function PaywallScreen() {
         ))}
       </View>
 
-      <View style={styles.planCard}>
-        <Text style={styles.planLabel}>Plano mensal</Text>
+      <LinearGradient
+        colors={['#1B2E1D', '#132116', '#0F1711']}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={styles.planCard}
+      >
         <View style={styles.priceRow}>
           <Text style={styles.priceCurrency}>R$</Text>
           <Text style={styles.priceValue}>29,90</Text>
-          <Text style={styles.pricePeriod}>/mês</Text>
         </View>
-        <Text style={styles.planCaption}>Cancele quando quiser, sem multa.</Text>
-      </View>
+        <Text style={styles.planCaption}>30 dias de acesso completo.</Text>
+      </LinearGradient>
 
       <TouchableOpacity
         style={[styles.cta, loading && styles.ctaDisabled]}
@@ -130,7 +147,7 @@ export default function PaywallScreen() {
       )}
 
       <Text style={styles.legal}>
-        Pagamento seguro pela Cakto. Cancele quando quiser.
+        Pagamento único e seguro pela Cakto. Sem renovação automática.
       </Text>
 
       {!claimOpen ? (
@@ -192,7 +209,6 @@ const styles = StyleSheet.create({
 
   planCard: {
     alignItems: 'center',
-    backgroundColor: '#161D17',
     borderRadius: 16,
     borderWidth: 2,
     borderColor: '#4CAF50',
@@ -200,12 +216,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     gap: 2,
   },
-  planLabel: { color: '#4CAF50', fontSize: 13, fontWeight: '700', letterSpacing: 0.5 },
   priceRow: { flexDirection: 'row', alignItems: 'baseline', gap: 3 },
   priceCurrency: { color: '#fff', fontSize: 18, fontWeight: '600' },
   priceValue: { color: '#fff', fontSize: 42, fontWeight: '800' },
-  pricePeriod: { color: '#888', fontSize: 15, fontWeight: '600' },
-  planCaption: { color: '#888', fontSize: 12, marginTop: 4 },
+  planCaption: { color: '#9BB89F', fontSize: 12, marginTop: 4 },
 
   cta: {
     backgroundColor: '#4CAF50',

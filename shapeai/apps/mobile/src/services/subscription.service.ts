@@ -1,4 +1,5 @@
 import { apiGet, apiPost } from './api.client'
+import type { MetaTracking } from './meta-pixel'
 
 export type PlanId = 'monthly' | 'quarterly' | 'annual'
 
@@ -16,9 +17,12 @@ export async function getSubscriptionStatus(): Promise<SubscriptionStatus> {
  * amarra o pagamento a esta conta — por isso a pessoa pode pagar com qualquer e-mail
  * que o acesso é liberado na conta certa.
  */
-export async function createCheckout(plan: PlanId): Promise<string> {
+export async function createCheckout(plan: PlanId, tracking?: MetaTracking): Promise<string> {
   const { checkout_url } = await apiPost<{ checkout_url: string }>('/subscription/checkout', {
     plan,
+    event_id: tracking?.eventId,
+    fbp: tracking?.fbp,
+    fbc: tracking?.fbc,
   })
   return checkout_url
 }

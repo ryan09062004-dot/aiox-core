@@ -117,13 +117,35 @@ describe('resolveExpiresAt', () => {
 
 describe('resolvePaymentOwner', () => {
   it('vincula pelo token mesmo quando o e-mail da compra é diferente do cadastro', async () => {
-    const pool = mockPool({ rows: [{ user_id: 'user-1', plan: 'monthly' }] })
+    const pool = mockPool({
+      rows: [
+        {
+          user_id: 'user-1',
+          plan: 'monthly',
+          fbp: 'fb.1.1.abc',
+          fbc: 'fb.1.1.click',
+          event_id: 'evt-1',
+          client_ip: '1.2.3.4',
+          user_agent: 'UA',
+        },
+      ],
+    })
 
     const owner = await resolvePaymentOwner(pool, {
       data: { src: TOKEN, customer: { email: 'outro-email@gmail.com' } },
     })
 
-    expect(owner).toEqual({ userId: 'user-1', plan: 'monthly' })
+    expect(owner).toEqual({
+      userId: 'user-1',
+      plan: 'monthly',
+      tracking: {
+        fbp: 'fb.1.1.abc',
+        fbc: 'fb.1.1.click',
+        eventId: 'evt-1',
+        clientIp: '1.2.3.4',
+        userAgent: 'UA',
+      },
+    })
     // Resolvido pelo token: não deve nem consultar por e-mail.
     expect(pool.query).toHaveBeenCalledTimes(1)
   })
@@ -136,7 +158,8 @@ describe('resolvePaymentOwner', () => {
       data: { customer: { email: 'buyer@mail.com' } },
     })
 
-    expect(owner).toEqual({ userId: 'user-2', plan: null })
+    // Sem intent não há identificadores de tracking do Meta.
+    expect(owner).toEqual({ userId: 'user-2', plan: null, tracking: null })
     expect(pool.query).toHaveBeenCalledTimes(1)
   })
 
