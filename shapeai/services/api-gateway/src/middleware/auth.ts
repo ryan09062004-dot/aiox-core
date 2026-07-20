@@ -28,9 +28,13 @@ export async function requireAuth(request: FastifyRequest, reply: FastifyReply) 
     const userId = payload.sub as string
     const email = (payload as Record<string, unknown>).email as string ?? ''
 
+    // ACESSO LIBERADO PARA TODOS (temporário): toda conta nova nasce 'pro' com
+    // expiração distante. Contas já existentes mantêm o status atual (ON CONFLICT).
+    // REVERTER para `INSERT INTO users (id, email) VALUES ($1, $2)` quando as
+    // restrições/paywall voltarem a valer.
     const { rows } = await pool.query<AuthUser>(
-      `INSERT INTO users (id, email)
-       VALUES ($1, $2)
+      `INSERT INTO users (id, email, subscription_status, subscription_expires_at)
+       VALUES ($1, $2, 'pro', '2099-12-31')
        ON CONFLICT (id) DO UPDATE SET email = EXCLUDED.email
        RETURNING id, email, subscription_status`,
       [userId, email]
